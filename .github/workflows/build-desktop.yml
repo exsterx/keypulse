@@ -29,15 +29,19 @@ jobs:
         run: npm run desktop:build
         shell: pwsh
 
-      # Desktop dependencies (electron, electron-builder, engine runtime deps).
+      # Desktop dependencies (skip optional native modules bufferutil/utf-8-validate).
       - name: Install desktop dependencies
-        run: npm install
+        run: npm install --omit=optional
         working-directory: desktop
         shell: pwsh
 
+      # Make MSVC available to node-gyp for the native rebuild.
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
       # Rebuild better-sqlite3 for Electron ABI.
       - name: Rebuild native modules for Electron
-        run: npx electron-rebuild -f -w better-sqlite3
+        run: npx @electron/rebuild -f -w better-sqlite3
         working-directory: desktop
         shell: pwsh
 
