@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Keypulse</title>
+  <title>Key Pulse v0.1.0</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -31,11 +31,8 @@
     <label data-i18n="apiHash">Telegram API Hash</label>
     <input id="TG_API_HASH" type="text" autocomplete="off">
 
-    <label data-i18n="botToken">Bot token</label>
-    <input id="BOT_TOKEN" type="text" autocomplete="off">
-
-    <label data-i18n="ownerId">Owner Telegram ID</label>
-    <input id="OWNER_TELEGRAM_ID" type="text" autocomplete="off">
+    <label data-i18n="chatId">Your chat_id</label>
+    <input id="TARGET_CHAT_ID" type="text" autocomplete="off">
 
     <label data-i18n="relayUrl">Relay URL</label>
     <input id="RELAY_URL" type="text" autocomplete="off">
@@ -46,6 +43,7 @@
 
   <section id="auth">
     <h2 data-i18n="authTitle">Account authorization</h2>
+    <p class="hint" data-i18n="startHint"></p>
     <label data-i18n="phone">Phone number (international)</label>
     <input id="phone" type="text" autocomplete="off">
     <button id="authorize" data-i18n="authorize">Authorize account</button>

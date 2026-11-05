@@ -90,12 +90,17 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
 
   const apiId = parsePositiveInt(requireFrom(env, "TG_API_ID"), "TG_API_ID");
   const apiHash = requireFrom(env, "TG_API_HASH");
-  const botToken = requireFrom(env, "BOT_TOKEN");
-  const ownerTelegramId = parsePositiveInt(requireFrom(env, "OWNER_TELEGRAM_ID"), "OWNER_TELEGRAM_ID");
+  const botToken = (env.BOT_TOKEN || "").trim();
+  const ownerTelegramId = env.OWNER_TELEGRAM_ID
+    ? parsePositiveInt(env.OWNER_TELEGRAM_ID, "OWNER_TELEGRAM_ID")
+    : 0;
 
   const targetChatId = env.TARGET_CHAT_ID
     ? parsePositiveInt(env.TARGET_CHAT_ID, "TARGET_CHAT_ID")
     : ownerTelegramId;
+  if (!targetChatId) {
+    throw new Error("TARGET_CHAT_ID (or OWNER_TELEGRAM_ID) is required.");
+  }
 
   const monitorMode = pickEnum<MonitorMode>(env.MONITOR_MODE, ["live", "backfill", "both"], "live");
   const searchMode = pickEnum<SearchMode>(env.SEARCH_MODE, ["exact", "substring", "regex"], "substring");

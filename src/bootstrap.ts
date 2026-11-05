@@ -62,13 +62,16 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
   await keywordManager.init();
 
   const account = new TelegramAccount(config, logger);
-  const bot = new Telegraf(config.botToken);
+  const hasBot = !!config.botToken;
+  const bot = hasBot ? new Telegraf(config.botToken) : null;
+  const relaySender =
+    config.notifyViaRelay || !hasBot ? createRelaySender(config.relayUrl, config.relayApiKey) : null;
 
   const notifier = new Notifier(
-    config.notifyViaRelay
-      ? createRelaySender(config.relayUrl, config.relayApiKey)
+    config.notifyViaRelay || !hasBot
+      ? relaySender!
       : (chatId: number, text: string, extra?: NotifierSendExtra) =>
-          bot.telegram.sendMessage(chatId, text, extra as any),
+          bot!.telegram.sendMessage(chatId, text, extra as any),
     messageRepo,
     notificationRepo,
     config,
@@ -92,7 +95,10 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
   const digest = new DigestService(
     messageRepo,
     config.timezone,
-    (chatId, text, extra) => bot.telegram.sendMessage(chatId, text, extra as any),
+    hasBot
+      ? (chatId: number, text: string, extra?: NotifierSendExtra) =>
+          bot!.telegram.sendMessage(chatId, text, extra as any)
+      : relaySender!,
     config.targetChatId,
     logger
   );
@@ -109,7 +115,9 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
     digest,
     matcher,
   };
-  registerBotHandlers(bot, services);
+  if (hasBot && bot) {
+    registerBotHandlers(bot, services);
+  }
 
   let relayBridge: RelayBridge | undefined;
   if (config.notifyViaRelay) {
@@ -119,9 +127,11 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
   }
 
   await account.connect();
-  void bot.launch({ dropPendingUpdates: true }).catch((error) => {
-    logger.error(`Bot launch error: ${errMsg(error)}`);
-  });
+  if (hasBot && bot) {
+    void bot.launch({ dropPendingUpdates: true }).catch((error) => {
+      logger.error(`Bot launch error: ${errMsg(error)}`);
+    });
+  }
   await monitor.start();
 
   let digestScheduler: SchedulerHandle | undefined;
@@ -157,7 +167,7 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
       relayBridge?.stop();
       await monitor.stop();
       try {
-        bot.stop();
+        bot?.stop();
       } catch {
         /* ignore */
       }

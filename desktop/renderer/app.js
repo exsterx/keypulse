@@ -35,8 +35,7 @@ async function refresh() {
 
   $("TG_API_ID").value = c.TG_API_ID || "";
   $("TG_API_HASH").value = c.TG_API_HASH || "";
-  $("BOT_TOKEN").value = c.BOT_TOKEN || "";
-  $("OWNER_TELEGRAM_ID").value = c.OWNER_TELEGRAM_ID || "";
+  $("TARGET_CHAT_ID").value = c.TARGET_CHAT_ID || "";
   $("RELAY_URL").value = c.RELAY_URL || "";
   $("RELAY_API_KEY").value = c.RELAY_API_KEY || "";
 
@@ -47,8 +46,7 @@ function collectConfig() {
   return {
     TG_API_ID: $("TG_API_ID").value.trim(),
     TG_API_HASH: $("TG_API_HASH").value.trim(),
-    BOT_TOKEN: $("BOT_TOKEN").value.trim(),
-    OWNER_TELEGRAM_ID: $("OWNER_TELEGRAM_ID").value.trim(),
+    TARGET_CHAT_ID: $("TARGET_CHAT_ID").value.trim(),
     RELAY_URL: $("RELAY_URL").value.trim(),
     RELAY_API_KEY: $("RELAY_API_KEY").value.trim(),
     LANGUAGE: $("lang").value,

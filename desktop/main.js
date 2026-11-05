@@ -4,14 +4,10 @@ const fs = require("fs");
 
 const DEFAULT_RELAY_URL = "https://keypulse.xyz/";
 const APP_VERSION = require("./package.json").version;
-// Впиши токен общего бота, чтобы поле «Bot token» заполнялось автоматически.
-const DEFAULT_BOT_TOKEN = "8496724352:AAEmvnQ6Fz1tNffdk13gpWeqB6R5gsByJi0";
 
 const DEFAULTS = {
   TG_API_ID: "",
   TG_API_HASH: "",
-  BOT_TOKEN: DEFAULT_BOT_TOKEN,
-  OWNER_TELEGRAM_ID: "",
   TARGET_CHAT_ID: "",
   NOTIFY_VIA_RELAY: "true",
   RELAY_URL: DEFAULT_RELAY_URL,
@@ -58,7 +54,7 @@ function saveConfigFile() {
 }
 
 function configIsValid() {
-  return !!(config.TG_API_ID && config.TG_API_HASH && config.BOT_TOKEN && config.OWNER_TELEGRAM_ID);
+  return !!(config.TG_API_ID && config.TG_API_HASH && config.TARGET_CHAT_ID && config.RELAY_API_KEY);
 }
 
 function requireEngine() {
@@ -130,6 +126,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
   });
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));

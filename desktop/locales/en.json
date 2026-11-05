@@ -1,5 +1,5 @@
 {
-  "app.title": "Keypulse",
+  "app.title": "Key Pulse",
   "status": "Status",
   "running": "Running",
   "paused": "Paused",
@@ -12,13 +12,11 @@
   "settings": "Settings",
   "apiId": "Telegram API ID",
   "apiHash": "Telegram API Hash",
-  "botToken": "Bot token",
-  "ownerId": "Owner Telegram ID",
+  "chatId": "Your chat_id",
   "relayUrl": "Relay URL",
   "relayKey": "Relay API key",
   "language": "Language",
   "save": "Save",
-  "restart": "Restart",
   "saved": "Saved",
   "fillRequired": "Fill all required fields",
   "authorize": "Authorize account",
@@ -26,11 +24,12 @@
   "phone": "Phone number (international)",
   "code": "Verification code",
   "password": "Two-step password",
-  "send": "Send code",
   "submit": "Submit",
   "authDone": "Authorized",
   "authError": "Authorization error",
+  "startHint": "1. Open the bot in Telegram and press /start to get your chat_id. 2. Enter it above. 3. Press Authorize account.",
   "donate": "Support the project",
   "open": "Open window",
   "quit": "Quit"
 }
+

@@ -1,5 +1,5 @@
 {
-  "app.title": "Keypulse",
+  "app.title": "Key Pulse",
   "status": "Статус",
   "running": "Работает",
   "paused": "Пауза",
@@ -12,13 +12,11 @@
   "settings": "Настройки",
   "apiId": "Telegram API ID",
   "apiHash": "Telegram API Hash",
-  "botToken": "Токен бота",
-  "ownerId": "Telegram ID владельца",
+  "chatId": "Ваш chat_id",
   "relayUrl": "URL релея",
   "relayKey": "API-ключ релея",
   "language": "Язык",
   "save": "Сохранить",
-  "restart": "Перезапустить",
   "saved": "Сохранено",
   "fillRequired": "Заполните обязательные поля",
   "authorize": "Авторизовать аккаунт",
@@ -26,11 +24,12 @@
   "phone": "Номер телефона (международный)",
   "code": "Код подтверждения",
   "password": "Пароль двухэтапной аутентификации",
-  "send": "Отправить код",
   "submit": "Подтвердить",
   "authDone": "Авторизовано",
   "authError": "Ошибка авторизации",
+  "startHint": "1. Открой бота в Telegram и нажми /start — получишь свой chat_id. 2. Введи его в поле выше. 3. Нажми «Авторизовать аккаунт».",
   "donate": "Отблагодарить",
   "open": "Открыть окно",
   "quit": "Выход"
 }
+
