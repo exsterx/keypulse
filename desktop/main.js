@@ -185,15 +185,15 @@ function waitFor(channel) {
 }
 
 ipcMain.handle("auth:start", async (_e, phone) => {
-  const { TelegramClient } = require("telegram");
-  const { StringSession } = require("telegram/sessions");
-  const { saveSessionFile } = requireEngine();
-
-  const apiId = parseInt(config.TG_API_ID, 10);
-  const apiHash = config.TG_API_HASH;
-  const sessionFile = path.join(userDataDir, "data", "session.bin");
-
   try {
+    const { TelegramClient } = require("telegram");
+    const { StringSession } = require("telegram/sessions");
+    const { saveSessionFile } = requireEngine();
+
+    const apiId = parseInt(config.TG_API_ID, 10);
+    const apiHash = config.TG_API_HASH;
+    const sessionFile = path.join(userDataDir, "data", "session.bin");
+
     authClient = new TelegramClient(new StringSession(""), apiId, apiHash, { connectionRetries: 5 });
     await authClient.start({
       phoneNumber: async () => String(phone).trim(),
@@ -213,6 +213,7 @@ ipcMain.handle("auth:start", async (_e, phone) => {
     authClient = null;
     return { ok: true };
   } catch (e) {
+    authClient = null;
     return { ok: false, error: e && e.message ? e.message : String(e) };
   }
 });

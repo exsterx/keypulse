@@ -8,7 +8,7 @@
 <body>
   <header>
     <div class="brand">
-      <img src="../assets/logo.jpg" alt="Keypulse" class="logo">
+      <img src="../assets/logo.jpg" alt="Key Pulse" class="logo">
       <h1>Key Pulse</h1>
       <span class="version">v0.1.0</span>
     </div>
@@ -23,45 +23,50 @@
     <span id="status-text">—</span>
   </section>
 
-  <section id="settings">
-    <h2 data-i18n="settings">Settings</h2>
+  <section id="settings" class="card">
+    <h2 data-i18n="settings">Настройки</h2>
+
     <label data-i18n="apiId">Telegram API ID</label>
-    <input id="TG_API_ID" type="text" autocomplete="off">
+    <input id="TG_API_ID" type="text" data-i18n-placeholder="apiIdHint" autocomplete="off">
 
     <label data-i18n="apiHash">Telegram API Hash</label>
-    <input id="TG_API_HASH" type="text" autocomplete="off">
+    <input id="TG_API_HASH" type="text" data-i18n-placeholder="apiHashHint" autocomplete="off">
 
-    <label data-i18n="chatId">Your chat_id</label>
-    <input id="TARGET_CHAT_ID" type="text" autocomplete="off">
+    <label data-i18n="chatId">Ваш chat_id</label>
+    <input id="TARGET_CHAT_ID" type="text" data-i18n-placeholder="chatIdHint" autocomplete="off">
 
-    <label data-i18n="relayUrl">Relay URL</label>
+    <label data-i18n="relayUrl">URL релея</label>
     <input id="RELAY_URL" type="text" autocomplete="off">
 
-    <label data-i18n="relayKey">Relay API key</label>
-    <input id="RELAY_API_KEY" type="text" autocomplete="off">
+    <label data-i18n="relayKey">API-ключ релея</label>
+    <input id="RELAY_API_KEY" type="text" data-i18n-placeholder="relayKeyHint" autocomplete="off">
+
+    <button id="save" data-i18n="save">Сохранить</button>
+    <div id="save-result" class="result"></div>
   </section>
 
-  <section id="auth">
-    <h2 data-i18n="authTitle">Account authorization</h2>
+  <section id="auth" class="card">
+    <h2 data-i18n="authTitle">Авторизация аккаунта</h2>
     <p class="hint" data-i18n="startHint"></p>
-    <label data-i18n="phone">Phone number (international)</label>
-    <input id="phone" type="text" autocomplete="off">
-    <button id="authorize" data-i18n="authorize">Authorize account</button>
+
+    <label data-i18n="phone">Номер телефона</label>
+    <input id="phone" type="text" data-i18n-placeholder="phoneHint" autocomplete="off">
+    <button id="authorize" data-i18n="authorize">Авторизовать аккаунт</button>
 
     <div id="auth-prompt" hidden>
       <label id="prompt-label"></label>
       <input id="prompt-value" type="text" autocomplete="off">
-      <button id="prompt-submit" data-i18n="submit">Submit</button>
+      <button id="prompt-submit" data-i18n="submit">Подтвердить</button>
     </div>
 
-    <div id="auth-result"></div>
+    <div id="auth-result" class="result"></div>
   </section>
 
   <section class="actions">
-    <button id="save" data-i18n="save">Save</button>
-    <button id="donate" data-i18n="donate">Support the project</button>
+    <button id="donate" data-i18n="donate">Отблагодарить</button>
   </section>
 
   <script src="app.js"></script>
 </body>
 </html>
+

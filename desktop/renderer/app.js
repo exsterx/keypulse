@@ -12,6 +12,10 @@ function applyI18n() {
     const key = el.getAttribute("data-i18n");
     if (locale[key]) el.textContent = locale[key];
   });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    if (locale[key]) el.setAttribute("placeholder", locale[key]);
+  });
 }
 
 function setLang(lang) {
@@ -56,7 +60,7 @@ function collectConfig() {
 async function save() {
   await window.keypulse.saveConfig(collectConfig());
   await window.keypulse.restartEngine();
-  $("auth-result").textContent = t("saved");
+  $("save-result").textContent = t("saved");
   refresh();
 }
 
@@ -67,9 +71,28 @@ $("donate").onclick = () => window.keypulse.openDonate();
 
 $("authorize").onclick = async () => {
   const phone = $("phone").value.trim();
-  if (!phone) return;
-  await window.keypulse.saveConfig(collectConfig());
-  const res = await window.keypulse.authorize(phone);
+  if (!phone) {
+    $("auth-result").textContent = t("fillRequired");
+    return;
+  }
+  const cfg = collectConfig();
+  if (!cfg.TG_API_ID || !cfg.TG_API_HASH) {
+    $("auth-result").textContent = t("fillApiIdHash");
+    return;
+  }
+  const btn = $("authorize");
+  btn.disabled = true;
+  btn.textContent = t("sending");
+  $("auth-result").textContent = "";
+  await window.keypulse.saveConfig(cfg);
+  let res;
+  try {
+    res = await window.keypulse.authorize(phone);
+  } catch (e) {
+    res = { ok: false, error: (e && e.message) || String(e) };
+  }
+  btn.disabled = false;
+  btn.textContent = t("authorize");
   $("auth-result").textContent = res.ok ? t("authDone") : t("authError") + ": " + (res.error || "");
   if (res.ok) await window.keypulse.restartEngine();
 };
@@ -80,6 +103,7 @@ window.keypulse.onAuthPrompt((kind) => {
   $("prompt-label").textContent = kind === "code" ? t("code") : t("password");
   $("prompt-value").value = "";
   $("prompt-value").focus();
+  $("auth-result").textContent = t("codeSent");
 });
 
 $("prompt-submit").onclick = () => {
