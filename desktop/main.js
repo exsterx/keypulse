@@ -34,9 +34,7 @@ let authClient = null;
 
 const userDataDir = app.getPath("userData");
 const configPath = path.join(userDataDir, "config.json");
-const distDir = app.isPackaged
-  ? path.join(process.resourcesPath, "dist")
-  : path.join(__dirname, "..", "dist");
+const distDir = path.join(__dirname, "dist");
 
 function loadConfigFile() {
   try {

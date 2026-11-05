@@ -8,10 +8,11 @@ files:
   - preload.js
   - renderer/**/*
   - locales/**/*
+  - dist/**/*
 
-extraResources:
-  - from: ../dist
-    to: dist
+npmRebuild: false
+asarUnpack:
+  - "**/*.node"
 
 win:
   target:
@@ -23,7 +24,6 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-  # Multi-language installer (RU/EN). Requires Unicode NSIS (bundled with electron-builder).
   multiLanguageInstaller: true
   installerLanguages:
     - en_US

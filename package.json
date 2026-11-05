@@ -11,6 +11,7 @@
     "dev": "tsx src/index.ts",
     "auth": "tsx scripts/auth.ts",
     "install:native": "node scripts/fetch-native.cjs",
+    "desktop:build": "npm run build && node scripts/copy-dist-desktop.cjs",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/matcher.test.ts tests/dedupe.test.ts"
   },

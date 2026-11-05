@@ -1,0 +1,60 @@
+name: Build desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Engine dependencies (root) — for types + compiling.
+      - name: Install engine dependencies
+        run: npm install --ignore-scripts
+        shell: pwsh
+
+      # Compile the engine to dist/ and copy it into desktop/dist.
+      - name: Compile engine
+        run: npm run desktop:build
+        shell: pwsh
+
+      # Desktop dependencies (electron, electron-builder, engine runtime deps).
+      - name: Install desktop dependencies
+        run: npm install
+        working-directory: desktop
+        shell: pwsh
+
+      # Rebuild better-sqlite3 for Electron ABI.
+      - name: Rebuild native modules for Electron
+        run: npx electron-rebuild -f -w better-sqlite3
+        working-directory: desktop
+        shell: pwsh
+
+      # Build installer + portable exe.
+      - name: Build release
+        run: npm run dist
+        working-directory: desktop
+        shell: pwsh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: keypulse-desktop
+          path: desktop/release/*.exe
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: desktop/release/*.exe
