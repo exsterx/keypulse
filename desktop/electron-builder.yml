@@ -19,9 +19,9 @@ win:
   target:
     - nsis
     - portable
-  artifactName: ${productName}-${version}.${ext}
 
 nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
@@ -29,3 +29,6 @@ nsis:
   installerLanguages:
     - en_US
     - ru_RU
+
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
