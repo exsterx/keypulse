@@ -13,27 +13,34 @@
       <span class="version">v0.1.0</span>
     </div>
     <select id="lang">
-      <option value="ru">Русский</option>
       <option value="en">English</option>
+      <option value="ru">Русский</option>
     </select>
   </header>
 
   <section id="status">
     <span id="status-dot" class="dot red"></span>
     <span id="status-text">—</span>
+    <button id="status-details" class="status-details" hidden>?</button>
+    <button id="status-toggle" class="status-toggle" hidden></button>
   </section>
 
-  <section id="settings" class="card">
-    <h2 data-i18n="settings">Настройки</h2>
+  <nav class="tabs">
+    <button class="tab active" data-tab="settings" data-i18n="tabSettings">Настройки</button>
+    <button class="tab" data-tab="auth" data-i18n="tabAuth">Авторизация</button>
+    <button class="tab" data-tab="keywords" data-i18n="tabKeywords">Ключевые слова</button>
+    <button class="tab" data-tab="chats" data-i18n="tabChats">Исключённые чаты</button>
+  </nav>
 
+  <section id="tab-settings" class="tab-panel card">
     <label data-i18n="apiId">Telegram API ID</label>
-    <input id="TG_API_ID" type="text" data-i18n-placeholder="apiIdHint" autocomplete="off">
+    <input id="TG_API_ID" type="text" autocomplete="off">
 
     <label data-i18n="apiHash">Telegram API Hash</label>
-    <input id="TG_API_HASH" type="text" data-i18n-placeholder="apiHashHint" autocomplete="off">
+    <input id="TG_API_HASH" type="text" autocomplete="off">
 
     <label data-i18n="chatId">Ваш chat_id</label>
-    <input id="TARGET_CHAT_ID" type="text" data-i18n-placeholder="chatIdHint" autocomplete="off">
+    <input id="TARGET_CHAT_ID" type="text" autocomplete="off">
 
     <label data-i18n="relayUrl">URL релея</label>
     <input id="RELAY_URL" type="text" autocomplete="off">
@@ -45,28 +52,64 @@
     <div id="save-result" class="result"></div>
   </section>
 
-  <section id="auth" class="card">
-    <h2 data-i18n="authTitle">Авторизация аккаунта</h2>
-    <p class="hint" data-i18n="startHint"></p>
-
-    <label data-i18n="phone">Номер телефона</label>
-    <input id="phone" type="text" data-i18n-placeholder="phoneHint" autocomplete="off">
-    <button id="authorize" data-i18n="authorize">Авторизовать аккаунт</button>
-
-    <div id="auth-prompt" hidden>
-      <label id="prompt-label"></label>
-      <input id="prompt-value" type="text" autocomplete="off">
-      <button id="prompt-submit" data-i18n="submit">Подтвердить</button>
+  <section id="tab-auth" class="tab-panel card" hidden>
+    <div id="auth-authorized" hidden>
+      <div class="auth-badge"><span data-i18n="authorized">Авторизован</span></div>
+      <button id="auth-reset" data-i18n="resetAuth">Сбросить</button>
     </div>
 
-    <div id="auth-result" class="result"></div>
+    <div id="auth-form">
+      <label data-i18n="phone">Номер телефона</label>
+      <input id="phone" type="text" data-i18n-placeholder="phoneHint" autocomplete="off">
+      <button id="authorize" data-i18n="authorize">Авторизовать аккаунт</button>
+
+      <div id="auth-prompt" hidden>
+        <label id="prompt-label"></label>
+        <input id="prompt-value" type="text" autocomplete="off">
+        <button id="prompt-submit" data-i18n="submit">Подтвердить</button>
+      </div>
+
+      <div id="auth-result" class="result"></div>
+    </div>
+  </section>
+
+  <section id="tab-keywords" class="tab-panel card" hidden>
+    <h2 data-i18n="keywordsTitle">Ключевые слова</h2>
+    <p class="hint" data-i18n="keywordsHint"></p>
+    <div class="kw-add">
+      <input id="kw-input" type="text" data-i18n-placeholder="kwPlaceholder" autocomplete="off">
+      <button id="kw-add" data-i18n="add">Добавить</button>
+    </div>
+    <ul id="kw-list" class="kw-list"></ul>
+
+    <h2 data-i18n="excludesTitle">Стоп-слова</h2>
+    <p class="hint" data-i18n="excludesHint"></p>
+    <div class="kw-add">
+      <input id="ex-input" type="text" data-i18n-placeholder="exPlaceholder" autocomplete="off">
+      <button id="ex-add" data-i18n="add">Добавить</button>
+    </div>
+    <ul id="ex-list" class="kw-list"></ul>
+  </section>
+
+  <section id="tab-chats" class="tab-panel card" hidden>
+    <p class="hint" data-i18n="chatsHint"></p>
+    <ul id="chat-list" class="kw-list"></ul>
   </section>
 
   <section class="actions">
     <button id="donate" data-i18n="donate">Отблагодарить</button>
   </section>
 
+  <div id="status-modal" class="modal" hidden>
+    <div class="modal-box">
+      <div class="modal-title" data-i18n="errorDetails">Детали ошибки</div>
+      <div id="status-modal-text" class="modal-text"></div>
+      <button id="status-modal-close" data-i18n="close">Закрыть</button>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
+
 
