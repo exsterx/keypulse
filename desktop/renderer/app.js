@@ -43,8 +43,8 @@ async function refresh() {
   renderStatus(state.status);
 }
 
-async function save() {
-  const cfg = {
+function collectConfig() {
+  return {
     TG_API_ID: $("TG_API_ID").value.trim(),
     TG_API_HASH: $("TG_API_HASH").value.trim(),
     BOT_TOKEN: $("BOT_TOKEN").value.trim(),
@@ -53,7 +53,10 @@ async function save() {
     RELAY_API_KEY: $("RELAY_API_KEY").value.trim(),
     LANGUAGE: $("lang").value,
   };
-  await window.keypulse.saveConfig(cfg);
+}
+
+async function save() {
+  await window.keypulse.saveConfig(collectConfig());
   await window.keypulse.restartEngine();
   $("auth-result").textContent = t("saved");
   refresh();
@@ -67,8 +70,10 @@ $("donate").onclick = () => window.keypulse.openDonate();
 $("authorize").onclick = async () => {
   const phone = $("phone").value.trim();
   if (!phone) return;
+  await window.keypulse.saveConfig(collectConfig());
   const res = await window.keypulse.authorize(phone);
   $("auth-result").textContent = res.ok ? t("authDone") : t("authError") + ": " + (res.error || "");
+  if (res.ok) await window.keypulse.restartEngine();
 };
 
 window.keypulse.onAuthPrompt((kind) => {
@@ -88,8 +93,9 @@ $("prompt-submit").onclick = () => {
 
 window.keypulse.onStatus((status) => renderStatus(status));
 
-$("lang").onchange = () => {
+$("lang").onchange = async () => {
   setLang($("lang").value);
+  await window.keypulse.saveConfig(collectConfig());
 };
 
 refresh();

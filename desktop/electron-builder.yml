@@ -8,6 +8,7 @@ files:
   - preload.js
   - renderer/**/*
   - locales/**/*
+  - assets/**/*
   - dist/**/*
 
 npmRebuild: false

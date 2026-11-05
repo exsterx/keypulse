@@ -7,7 +7,11 @@
 </head>
 <body>
   <header>
-    <h1>Keypulse</h1>
+    <div class="brand">
+      <img src="../assets/logo.jpg" alt="Keypulse" class="logo">
+      <h1>Key Pulse</h1>
+      <span class="version">v0.1.0</span>
+    </div>
     <select id="lang">
       <option value="ru">Русский</option>
       <option value="en">English</option>
@@ -44,7 +48,7 @@
     <h2 data-i18n="authTitle">Account authorization</h2>
     <label data-i18n="phone">Phone number (international)</label>
     <input id="phone" type="text" autocomplete="off">
-    <button id="authorize" data-i18n="send">Send code</button>
+    <button id="authorize" data-i18n="authorize">Authorize account</button>
 
     <div id="auth-prompt" hidden>
       <label id="prompt-label"></label>

@@ -18,6 +18,23 @@ header {
 
 h1 { font-size: 18px; margin: 0; font-weight: 600; }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+}
+
+.version {
+  font-size: 12px;
+  color: #8b93a1;
+}
+
 #lang {
   width: 110px;
   padding: 6px 8px;
