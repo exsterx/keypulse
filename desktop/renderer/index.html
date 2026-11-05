@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Keypulse</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Keypulse</h1>
+    <select id="lang">
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+    </select>
+  </header>
+
+  <section id="status">
+    <span id="status-dot" class="dot red"></span>
+    <span id="status-text">—</span>
+  </section>
+
+  <section id="settings">
+    <h2 data-i18n="settings">Settings</h2>
+    <label data-i18n="apiId">Telegram API ID</label>
+    <input id="TG_API_ID" type="text" autocomplete="off">
+
+    <label data-i18n="apiHash">Telegram API Hash</label>
+    <input id="TG_API_HASH" type="text" autocomplete="off">
+
+    <label data-i18n="botToken">Bot token</label>
+    <input id="BOT_TOKEN" type="text" autocomplete="off">
+
+    <label data-i18n="ownerId">Owner Telegram ID</label>
+    <input id="OWNER_TELEGRAM_ID" type="text" autocomplete="off">
+
+    <label data-i18n="relayUrl">Relay URL</label>
+    <input id="RELAY_URL" type="text" autocomplete="off">
+
+    <label data-i18n="relayKey">Relay API key</label>
+    <input id="RELAY_API_KEY" type="text" autocomplete="off">
+  </section>
+
+  <section id="auth">
+    <h2 data-i18n="authTitle">Account authorization</h2>
+    <label data-i18n="phone">Phone number (international)</label>
+    <input id="phone" type="text" autocomplete="off">
+    <button id="authorize" data-i18n="send">Send code</button>
+
+    <div id="auth-prompt" hidden>
+      <label id="prompt-label"></label>
+      <input id="prompt-value" type="text" autocomplete="off">
+      <button id="prompt-submit" data-i18n="submit">Submit</button>
+    </div>
+
+    <div id="auth-result"></div>
+  </section>
+
+  <section class="actions">
+    <button id="save" data-i18n="save">Save</button>
+    <button id="donate" data-i18n="donate">Support the project</button>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

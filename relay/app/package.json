@@ -1,0 +1,12 @@
+{
+  "name": "relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Telegram keyword monitor — light relay server (single shared bot).",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "telegraf": "^4.16.3",
+    "ws": "^8.18.0"
+  }
+}

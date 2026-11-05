@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Secrets / local config (never commit real credentials)
+.env
+
+# Local data (database, session file, keywords cache) — DO NOT COMMIT
+data/*
+logs/*
+*.log
+
+# Keep the folders in git but ignore their contents
+!data/.gitkeep
+!logs/.gitkeep

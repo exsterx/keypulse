@@ -1,0 +1,15 @@
+{
+  "name": "keypulse-desktop",
+  "version": "0.1.0",
+  "description": "Keypulse — local Telegram keyword monitor (Windows desktop app).",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3"
+  }
+}

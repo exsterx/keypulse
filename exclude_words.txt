@@ -1,0 +1,5 @@
+# Exclude words and phrases (one per line).
+# If a message contains any enabled exclude word, it is skipped entirely.
+# Same format as keywords.txt ('#' = comment, '- ' = disabled).
+scam
+giveaway

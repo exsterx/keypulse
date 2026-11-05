@@ -1,0 +1,10 @@
+services:
+  relay:
+    build: ./app
+    env_file:
+      - ./app/.env
+    environment:
+      - TZ=Europe/Moscow
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

@@ -1,0 +1,30 @@
+appId: com.keypulse.desktop
+productName: Keypulse
+directories:
+  output: release
+
+files:
+  - main.js
+  - preload.js
+  - renderer/**/*
+  - locales/**/*
+
+extraResources:
+  - from: ../dist
+    to: dist
+
+win:
+  target:
+    - nsis
+    - portable
+  artifactName: ${productName}-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  # Multi-language installer (RU/EN). Requires Unicode NSIS (bundled with electron-builder).
+  multiLanguageInstaller: true
+  installerLanguages:
+    - en_US
+    - ru_RU
