@@ -1,10 +1,10 @@
-# Relay — «лёгкий сервер» для одного общего Telegram-бота
+# Relay — a lightweight server for a single shared Telegram bot
 
-Принимает совпадения от клиентов по HTTP и отправляет их через **один общий бот**,
-а также маршрутизирует команды бота и нажатия кнопок обратно к клиенту по WebSocket.
-Токен бота живёт только на сервере.
+Accepts matches from clients over HTTP and sends them through **one shared bot**,
+and also routes bot commands and button presses back to the client over WebSocket.
+The bot token lives only on the server.
 
-## Структура
+## Structure
 
 ```
 relay/
@@ -13,53 +13,53 @@ relay/
     ├── Dockerfile
     ├── package.json
     ├── index.js
-    ├── .env.example   # образец
-    └── .env           # заполнить реальными значениями
+    ├── .env.example   # sample
+    └── .env           # fill in with real values
 ```
 
-## Деплой (Ubuntu, Docker)
+## Deploy (Ubuntu, Docker)
 
 ```bash
 cd relay
 cp app/.env.example app/.env
-nano app/.env          # вписать BOT_TOKEN и API_KEYS
+nano app/.env          # fill in BOT_TOKEN and API_KEYS
 docker compose up -d --build
 docker compose logs -f relay
 ```
 
 ## API_KEYS
 
-Список ключей через запятую (заголовок `x-api-key`):
+Comma-separated list of keys (`x-api-key` header):
 
 ```
 API_KEYS=secret1,secret2
 ```
 
-Любой валидный ключ может слать уведомления и подключаться по WebSocket.
+Any valid key can send notifications and connect over WebSocket.
 
-## Проверка
+## Verification
 
 ```bash
 curl https://DOMAIN/health
 ```
 
-Отправить уведомление (chat_id узнаётся командой `/start` у бота):
+Send a notification (chat_id is obtained with the `/start` command at the bot):
 
 ```bash
 curl -X POST https://DOMAIN/notify \
   -H "Content-Type: application/json" \
-  -H "x-api-key: ключ1" \
-  -d '{"chat_id": 658834682, "text": "тест"}'
+  -H "x-api-key: key1" \
+  -d '{"chat_id": 658834682, "text": "test"}'
 ```
 
-## Эндпоинты
+## Endpoints
 
-- `POST /notify` — принять уведомление (`chat_id`, `text`, `reply_markup`; заголовок `x-api-key`).
-- `GET /health` — проверка живости.
-- `WS /ws` — канал команд сервер ↔ клиент (`hello`, `req`, `res`).
+- `POST /notify` — accept a notification (`chat_id`, `text`, `reply_markup`; `x-api-key` header).
+- `GET /health` — liveness check.
+- `WS /ws` — server ↔ client command channel (`hello`, `req`, `res`).
 
-## Что дальше (не входит в минимальную версию)
+## What's next (not part of the minimal version)
 
-- Очередь отправки + rate-limit (защита от лимитов Telegram).
-- Реестр пользователей в базе (сейчас — ключи и chat_id в env).
+- Send queue + rate limiting (protection against Telegram limits).
+- User registry in a database (currently keys and chat_id are in env).
 

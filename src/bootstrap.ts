@@ -31,11 +31,21 @@ export interface AppStatus {
   relayConnected: boolean | null;
 }
 
+export interface ChatListItem {
+  id: number;
+  title: string;
+  username: string | null;
+  type: string;
+  isMonitored: boolean;
+}
+
 export interface AppHandle {
   monitor: Monitor;
   account: TelegramAccount;
   relayBridge: RelayBridge | undefined;
   getStatus(): AppStatus;
+  listChats(): ChatListItem[];
+  setChatMonitored(id: number, monitored: boolean): boolean;
   stop(): Promise<void>;
 }
 
@@ -160,6 +170,18 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
         paused: monitor.isPaused(),
         relayConnected: relayBridge ? relayBridge.isConnected() : null,
       };
+    },
+    listChats(): ChatListItem[] {
+      return chatRepo.getAll().map((c) => ({
+        id: c.id,
+        title: c.title,
+        username: c.username,
+        type: c.type,
+        isMonitored: c.is_monitored === 1,
+      }));
+    },
+    setChatMonitored(id: number, monitored: boolean): boolean {
+      return chatRepo.setMonitored(id, monitored);
     },
     async stop(): Promise<void> {
       digestScheduler?.stop();
