@@ -1,4 +1,3 @@
-import { Telegraf } from "telegraf";
 import type { Api } from "telegram";
 import type { AppConfig } from "./config/config";
 import type { Logger } from "./utils/logger";
@@ -15,11 +14,10 @@ import { TelegramAccount } from "./telegram/client";
 import { MessageProcessor } from "./monitor/messageProcessor";
 import { Backfiller } from "./monitor/backfill";
 import { Monitor } from "./monitor/monitor";
-import { Notifier, type NotifierSendExtra } from "./notifications/notifier";
+import { Notifier } from "./notifications/notifier";
 import { createRelaySender } from "./notifications/relaySender";
 import { RelayBridge } from "./notifications/relayBridge";
 import { DigestService } from "./digest/digest";
-import { registerBotHandlers } from "./bot/bot";
 import { CommandService } from "./bot/commands";
 import { scheduleDaily, isValidTime, type SchedulerHandle } from "./utils/scheduler";
 import { errMsg } from "./utils/misc";
@@ -72,21 +70,9 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
   await keywordManager.init();
 
   const account = new TelegramAccount(config, logger);
-  const hasBot = !!config.botToken;
-  const bot = hasBot ? new Telegraf(config.botToken) : null;
-  const relaySender =
-    config.notifyViaRelay || !hasBot ? createRelaySender(config.relayUrl, config.relayApiKey) : null;
+  const relaySender = createRelaySender(config.relayUrl, config.relayApiKey);
 
-  const notifier = new Notifier(
-    config.notifyViaRelay || !hasBot
-      ? relaySender!
-      : (chatId: number, text: string, extra?: NotifierSendExtra) =>
-          bot!.telegram.sendMessage(chatId, text, extra as any),
-    messageRepo,
-    notificationRepo,
-    config,
-    logger
-  );
+  const notifier = new Notifier(relaySender, messageRepo, notificationRepo, config, logger);
 
   const processor = new MessageProcessor({ chatRepo, messageRepo, matcher, notifier, logger });
   const entities = new Map<number, Api.TypeInputPeer>();
@@ -102,16 +88,7 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
     logger,
   });
 
-  const digest = new DigestService(
-    messageRepo,
-    config.timezone,
-    hasBot
-      ? (chatId: number, text: string, extra?: NotifierSendExtra) =>
-          bot!.telegram.sendMessage(chatId, text, extra as any)
-      : relaySender!,
-    config.targetChatId,
-    logger
-  );
+  const digest = new DigestService(messageRepo, config.timezone, relaySender, config.targetChatId, logger);
 
   const services = {
     config,
@@ -125,23 +102,13 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
     digest,
     matcher,
   };
-  if (hasBot && bot) {
-    registerBotHandlers(bot, services);
-  }
 
   let relayBridge: RelayBridge | undefined;
-  if (config.notifyViaRelay) {
-    const commandService = new CommandService(services);
-    relayBridge = new RelayBridge(config.relayUrl, config.relayApiKey, config.targetChatId, commandService, logger);
-    relayBridge.start();
-  }
+  const commandService = new CommandService(services);
+  relayBridge = new RelayBridge(config.relayUrl, config.relayApiKey, config.targetChatId, commandService, logger);
+  relayBridge.start();
 
   await account.connect();
-  if (hasBot && bot) {
-    void bot.launch({ dropPendingUpdates: true }).catch((error) => {
-      logger.error(`Bot launch error: ${errMsg(error)}`);
-    });
-  }
   await monitor.start();
 
   let digestScheduler: SchedulerHandle | undefined;
@@ -188,11 +155,6 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
       notifier.stop();
       relayBridge?.stop();
       await monitor.stop();
-      try {
-        bot?.stop();
-      } catch {
-        /* ignore */
-      }
       await account.disconnect();
       keywordManager.close();
       try {

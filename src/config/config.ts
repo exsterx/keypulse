@@ -18,7 +18,6 @@ export interface AppConfig {
   apiId: number;
   apiHash: string;
   sessionString: string;
-  botToken: string;
   ownerTelegramId: number;
   targetChatId: number;
 
@@ -34,7 +33,6 @@ export interface AppConfig {
   notificationBatchSeconds: number;
   notificationMaxPerMinute: number;
 
-  notifyViaRelay: boolean;
   relayUrl: string;
   relayApiKey: string;
 
@@ -90,7 +88,6 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
 
   const apiId = parsePositiveInt(requireFrom(env, "TG_API_ID"), "TG_API_ID");
   const apiHash = requireFrom(env, "TG_API_HASH");
-  const botToken = (env.BOT_TOKEN || "").trim();
   const ownerTelegramId = env.OWNER_TELEGRAM_ID
     ? parsePositiveInt(env.OWNER_TELEGRAM_ID, "OWNER_TELEGRAM_ID")
     : 0;
@@ -106,11 +103,10 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
   const searchMode = pickEnum<SearchMode>(env.SEARCH_MODE, ["exact", "substring", "regex"], "substring");
   const notificationMode = pickEnum<NotificationMode>(env.NOTIFICATION_MODE, ["each", "batch"], "each");
 
-  const notifyViaRelay = env.NOTIFY_VIA_RELAY === "true" || env.NOTIFY_VIA_RELAY === "1";
   const relayUrl = (env.RELAY_URL || "").trim();
   const relayApiKey = (env.RELAY_API_KEY || "").trim();
-  if (notifyViaRelay && (!relayUrl || !relayApiKey)) {
-    throw new Error("NOTIFY_VIA_RELAY=true requires RELAY_URL and RELAY_API_KEY to be set.");
+  if (!relayUrl || !relayApiKey) {
+    throw new Error("RELAY_URL and RELAY_API_KEY are required.");
   }
 
   const sessionFile = path.join(dataDir, "session.bin");
@@ -126,7 +122,6 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
     apiId,
     apiHash,
     sessionString: loadSessionFile(sessionFile, env.TG_SESSION ?? ""),
-    botToken,
     ownerTelegramId,
     targetChatId,
 
@@ -142,7 +137,6 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
     notificationBatchSeconds: parseInt(env.NOTIFICATION_BATCH_SECONDS ?? "300", 10) || 300,
     notificationMaxPerMinute: parseInt(env.NOTIFICATION_MAX_PER_MINUTE ?? "20", 10) || 20,
 
-    notifyViaRelay,
     relayUrl,
     relayApiKey,
 

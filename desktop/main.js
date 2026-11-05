@@ -9,7 +9,6 @@ const DEFAULTS = {
   TG_API_ID: "",
   TG_API_HASH: "",
   TARGET_CHAT_ID: "",
-  NOTIFY_VIA_RELAY: "true",
   RELAY_URL: DEFAULT_RELAY_URL,
   RELAY_API_KEY: "",
   MONITOR_MODE: "both",

@@ -34,7 +34,7 @@ keypulse/
 
 ```bash
 npm install
-copy .env.example .env    # fill TG_API_ID, TG_API_HASH, BOT_TOKEN, OWNER_TELEGRAM_ID
+copy .env.example .env    # fill TG_API_ID, TG_API_HASH, TARGET_CHAT_ID, RELAY_URL, RELAY_API_KEY
 npm run auth              # authorize your Telegram account
 npm run build
 scripts\start.bat

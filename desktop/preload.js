@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
+const appVersion = require(path.join(__dirname, "package.json")).version;
+
 function getLocale(lang) {
   try {
     const p = path.join(__dirname, "locales", (lang || "en") + ".json");
@@ -12,6 +14,7 @@ function getLocale(lang) {
 }
 
 contextBridge.exposeInMainWorld("keypulse", {
+  appVersion,
   getState: () => ipcRenderer.invoke("get-state"),
   saveConfig: (cfg) => ipcRenderer.invoke("save-config", cfg),
   restartEngine: () => ipcRenderer.invoke("restart-engine"),

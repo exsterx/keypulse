@@ -299,4 +299,11 @@ $("lang").onchange = async () => {
   await window.keypulse.saveConfig(collectConfig());
 };
 
+// Set app version from package.json (exposed via preload)
+if (window.keypulse.appVersion) {
+  document.title = "Key Pulse v" + window.keypulse.appVersion;
+  const v = document.querySelector(".version");
+  if (v) v.textContent = "v" + window.keypulse.appVersion;
+}
+
 refresh();
