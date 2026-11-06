@@ -2,6 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import dotenv from "dotenv";
 import { loadSessionFile } from "../utils/sessionStore";
+import type { Lang } from "../utils/i18n";
 
 export type MonitorMode = "live" | "backfill" | "both";
 export type SearchMode = "exact" | "substring" | "regex";
@@ -19,7 +20,6 @@ export interface AppConfig {
   apiHash: string;
   sessionString: string;
   ownerTelegramId: number;
-  targetChatId: number;
 
   timezone: string;
   digestTime: string;
@@ -35,6 +35,8 @@ export interface AppConfig {
 
   relayUrl: string;
   relayApiKey: string;
+
+  language: Lang;
 
   logLevel: string;
 }
@@ -92,13 +94,6 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
     ? parsePositiveInt(env.OWNER_TELEGRAM_ID, "OWNER_TELEGRAM_ID")
     : 0;
 
-  const targetChatId = env.TARGET_CHAT_ID
-    ? parsePositiveInt(env.TARGET_CHAT_ID, "TARGET_CHAT_ID")
-    : ownerTelegramId;
-  if (!targetChatId) {
-    throw new Error("TARGET_CHAT_ID (or OWNER_TELEGRAM_ID) is required.");
-  }
-
   const monitorMode = pickEnum<MonitorMode>(env.MONITOR_MODE, ["live", "backfill", "both"], "live");
   const searchMode = pickEnum<SearchMode>(env.SEARCH_MODE, ["exact", "substring", "regex"], "substring");
   const notificationMode = pickEnum<NotificationMode>(env.NOTIFICATION_MODE, ["each", "batch"], "each");
@@ -123,7 +118,6 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
     apiHash,
     sessionString: loadSessionFile(sessionFile, env.TG_SESSION ?? ""),
     ownerTelegramId,
-    targetChatId,
 
     timezone: env.TIMEZONE || "Europe/Moscow",
     digestTime: env.DIGEST_TIME || "09:00",
@@ -139,6 +133,8 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
 
     relayUrl,
     relayApiKey,
+
+    language: pickEnum<Lang>(env.LANGUAGE, ["en", "ru"], "en"),
 
     logLevel: env.LOG_LEVEL || "info",
   };

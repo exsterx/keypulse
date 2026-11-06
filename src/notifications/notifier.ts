@@ -5,6 +5,7 @@ import type { NotificationRepository } from "../storage/notificationRepository";
 import { splitMessage, escapeHtml, highlightKeywords } from "../utils/text";
 import { formatDate } from "../utils/dates";
 import { errMsg, sleep } from "../utils/misc";
+import { t } from "../utils/i18n";
 
 export interface Notification {
   messageRowId: number;
@@ -17,10 +18,10 @@ export interface Notification {
   link: string | null;
 }
 
-function formatNotification(n: Notification, timezone: string): string {
+function formatNotification(n: Notification, timezone: string, lang: "en" | "ru"): string {
   const lines: string[] = [];
   lines.push(`🔔 <b>${escapeHtml(n.chatTitle)}</b>`);
-  lines.push(`🕒 ${formatDate(n.messageDate, timezone)}`);
+  lines.push(`🕒 ${formatDate(n.messageDate, timezone, lang)}`);
   lines.push(`🔑 ${escapeHtml(n.matchedKeywords.join(", "))}`);
   if (n.link) lines.push(`🔗 ${escapeHtml(n.link)}`);
   lines.push("");
@@ -56,6 +57,7 @@ export class Notifier {
     private readonly messageRepo: MessageRepository,
     private readonly notificationRepo: NotificationRepository,
     private readonly config: AppConfig,
+    private readonly targetChatId: number,
     private readonly logger: Logger
   ) {}
 
@@ -90,7 +92,7 @@ export class Notifier {
     const items = this.batchAccumulator.splice(0);
     if (items.length === 0) return;
 
-    const blocks = items.map((n) => formatNotification(n, this.config.timezone));
+    const blocks = items.map((n) => formatNotification(n, this.config.timezone, this.config.language));
     const combined = blocks.join("\n\n──────────\n\n");
 
     try {
@@ -104,20 +106,20 @@ export class Notifier {
       for (const item of items) {
         this.messageRepo.markNotified(item.messageRowId);
       }
-      this.notificationRepo.log(null, String(this.config.targetChatId), "sent");
+      this.notificationRepo.log(null, String(this.targetChatId), "sent");
     } catch (error) {
       this.logger.error(`Batch notification failed: ${errMsg(error)}`);
-      this.notificationRepo.log(null, String(this.config.targetChatId), "failed", errMsg(error));
+      this.notificationRepo.log(null, String(this.targetChatId), "failed", errMsg(error));
     }
   }
 
   private async sendOne(notification: Notification): Promise<void> {
-    const text = formatNotification(notification, this.config.timezone);
+    const text = formatNotification(notification, this.config.timezone, this.config.language);
     const extra: NotifierSendExtra = {
       parse_mode: "HTML",
       link_preview_options: { is_disabled: true },
       reply_markup: {
-        inline_keyboard: [[{ text: "🚫 Исключить", callback_data: `exclude:${notification.chatId}` }]],
+        inline_keyboard: [[{ text: t(this.config.language, "notify.exclude"), callback_data: `exclude:${notification.chatId}` }]],
       },
     };
     try {
@@ -125,12 +127,12 @@ export class Notifier {
         await this.sendRaw(chunk, extra);
       }
       this.messageRepo.markNotified(notification.messageRowId);
-      this.notificationRepo.log(notification.messageRowId, String(this.config.targetChatId), "sent");
+      this.notificationRepo.log(notification.messageRowId, String(this.targetChatId), "sent");
     } catch (error) {
       this.logger.error(`Notification failed: ${errMsg(error)}`);
       this.notificationRepo.log(
         notification.messageRowId,
-        String(this.config.targetChatId),
+        String(this.targetChatId),
         "failed",
         errMsg(error)
       );
@@ -142,7 +144,7 @@ export class Notifier {
     let attempt = 0;
     for (;;) {
       try {
-        await this.sendFn(this.config.targetChatId, text, extra);
+        await this.sendFn(this.targetChatId, text, extra);
         return;
       } catch (error) {
         attempt += 1;

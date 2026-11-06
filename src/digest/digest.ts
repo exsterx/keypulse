@@ -3,6 +3,7 @@ import { MessageRepository, type MatchRecord } from "../storage/messageRepositor
 import { splitMessage, truncate, escapeHtml } from "../utils/text";
 import { formatDate, unixSeconds } from "../utils/dates";
 import { errMsg } from "../utils/misc";
+import { t, type Lang } from "../utils/i18n";
 
 export interface StatsResult {
   total: number;
@@ -46,6 +47,7 @@ export class DigestService {
   constructor(
     private readonly messageRepo: MessageRepository,
     private readonly timezone: string,
+    private readonly language: Lang,
     private readonly sendFn: (
       chatId: number,
       text: string,
@@ -72,13 +74,18 @@ export class DigestService {
     const { topKeywords, topChats } = aggregate(matches);
 
     const lines: string[] = [];
-    lines.push("📊 Сводка совпадений");
-    lines.push(`Период: ${formatDate(sinceSeconds, this.timezone)} — ${formatDate(untilSeconds, this.timezone)}`);
-    lines.push(`Всего совпадений: ${matches.length}`);
+    lines.push(t(this.language, "digest.title"));
+    lines.push(
+      t(this.language, "digest.period", {
+        from: formatDate(sinceSeconds, this.timezone, this.language),
+        to: formatDate(untilSeconds, this.timezone, this.language),
+      })
+    );
+    lines.push(t(this.language, "digest.total", { count: matches.length }));
     lines.push("");
 
     if (topKeywords.length) {
-      lines.push("🔑 По ключевым словам:");
+      lines.push(t(this.language, "digest.byKeywords"));
       for (const { keyword, count } of topKeywords) {
         lines.push(`  • ${escapeHtml(keyword)} — ${count}`);
       }
@@ -86,7 +93,7 @@ export class DigestService {
     }
 
     if (topChats.length) {
-      lines.push("📡 По источникам:");
+      lines.push(t(this.language, "digest.bySources"));
       for (const { chat, count } of topChats) {
         lines.push(`  • ${escapeHtml(chat)} — ${count}`);
       }
@@ -94,11 +101,11 @@ export class DigestService {
     }
 
     if (matches.length) {
-      lines.push("📝 Сообщения:");
+      lines.push(t(this.language, "digest.messages"));
       const listed = matches.slice(-30);
       listed.forEach((match, index) => {
         const chat = escapeHtml(match.chat_title || String(match.chat_id));
-        const when = formatDate(match.message_date ?? match.detected_at, this.timezone);
+        const when = formatDate(match.message_date ?? match.detected_at, this.timezone, this.language);
         const keywords = escapeHtml(parseKeywords(match).join(", "));
         lines.push(`<b>${index + 1}. [${chat}] ${when}</b>`);
         lines.push(`   🔑 ${keywords}`);
@@ -107,7 +114,7 @@ export class DigestService {
         lines.push("");
       });
       if (matches.length > 30) {
-        lines.push(`… и ещё ${matches.length - 30} сообщений.`);
+        lines.push(t(this.language, "digest.more", { count: matches.length - 30 }));
       }
     }
 

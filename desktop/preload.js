@@ -32,9 +32,11 @@ contextBridge.exposeInMainWorld("keypulse", {
   setChatMonitored: (id, monitored) => ipcRenderer.invoke("chats:setMonitored", id, monitored),
   setMonitorEnabled: (enabled) => ipcRenderer.invoke("monitor:setEnabled", enabled),
   resetAuth: () => ipcRenderer.invoke("auth:reset"),
+  sendBotStart: () => ipcRenderer.invoke("bot:sendStart"),
   getLocale,
   onStatus: (cb) => ipcRenderer.on("status", (_e, s) => cb(s)),
   onAuthPrompt: (cb) => ipcRenderer.on("auth:prompt", (_e, p) => cb(p)),
   onAuthError: (cb) => ipcRenderer.on("auth:error", (_e, msg) => cb(msg)),
+  onLog: (cb) => ipcRenderer.on("log", (_e, line) => cb(line)),
 });
 

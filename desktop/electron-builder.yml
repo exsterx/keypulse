@@ -16,6 +16,7 @@ asarUnpack:
   - "**/*.node"
 
 win:
+  icon: assets/logo.ico
   target:
     - nsis
     - portable

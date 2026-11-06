@@ -2,10 +2,14 @@ export function unixSeconds(date: Date = new Date()): number {
   return Math.floor(date.getTime() / 1000);
 }
 
-export function formatDate(unixTimestamp: number | null | undefined, timezone: string): string {
+export function formatDate(
+  unixTimestamp: number | null | undefined,
+  timezone: string,
+  lang: "en" | "ru" = "ru"
+): string {
   if (!unixTimestamp) return "—";
   try {
-    return new Intl.DateTimeFormat("ru-RU", {
+    return new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "ru-RU", {
       timeZone: timezone,
       year: "numeric",
       month: "2-digit",

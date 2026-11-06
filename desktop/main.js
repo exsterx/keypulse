@@ -1,14 +1,16 @@
 const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { Writable } = require("stream");
+const winston = require("winston");
 
 const DEFAULT_RELAY_URL = "https://keypulse.xyz/";
+const BOT_USERNAME = "KeyPulseMainBot";
 const APP_VERSION = require("./package.json").version;
 
 const DEFAULTS = {
   TG_API_ID: "",
   TG_API_HASH: "",
-  TARGET_CHAT_ID: "",
   RELAY_URL: DEFAULT_RELAY_URL,
   RELAY_API_KEY: "",
   MONITOR_MODE: "both",
@@ -32,6 +34,7 @@ let authClient = null;
 let lastEngineError = "";
 let trayIcons = null;
 let lastTrayState = null;
+let starting = false;
 
 const userDataDir = app.getPath("userData");
 const configPath = path.join(userDataDir, "config.json");
@@ -56,7 +59,7 @@ function saveConfigFile() {
 }
 
 function configIsValid() {
-  return !!(config.TG_API_ID && config.TG_API_HASH && config.TARGET_CHAT_ID && config.RELAY_API_KEY);
+  return !!(config.TG_API_ID && config.TG_API_HASH && config.RELAY_API_KEY);
 }
 
 function sessionFilePath() {
@@ -84,7 +87,6 @@ function missingFieldsMessage() {
   const m = [];
   if (!config.TG_API_ID) m.push("API ID");
   if (!config.TG_API_HASH) m.push("API Hash");
-  if (!config.TARGET_CHAT_ID) m.push("chat_id");
   if (!config.RELAY_API_KEY) m.push("API-ключ релея");
   if (!m.length) return "";
   return (config.LANGUAGE || "ru") === "ru" ? "Не заполнено: " + m.join(", ") : "Missing: " + m.join(", ");
@@ -99,10 +101,29 @@ async function startEngine() {
     lastEngineError = "No Telegram session. Authorize first.";
     return { ok: false, error: lastEngineError };
   }
+  starting = true;
+  updateStatus();
   try {
     const { startApp, loadConfigFromObject, createLogger } = requireEngine();
     const appConfig = loadConfigFromObject(config, userDataDir);
     engineLogger = createLogger(appConfig.logsDir, appConfig.logLevel);
+    const logStream = new Writable({
+      write(chunk, _encoding, callback) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("log", String(chunk).replace(/\s+$/, ""));
+        }
+        callback();
+      },
+    });
+    engineLogger.add(
+      new winston.transports.Stream({
+        format: winston.format.combine(
+          winston.format.timestamp({ format: "HH:mm:ss" }),
+          winston.format.printf((info) => `${String(info.timestamp)} [${String(info.level).toUpperCase()}] ${info.message}`)
+        ),
+        stream: logStream,
+      })
+    );
     engine = await startApp(appConfig, engineLogger);
     engineLogger.info("Desktop app: engine started.");
     lastEngineError = "";
@@ -112,6 +133,9 @@ async function startEngine() {
     console.error("engine start failed:", msg);
     lastEngineError = msg;
     return { ok: false, error: msg };
+  } finally {
+    starting = false;
+    updateStatus();
   }
 }
 
@@ -133,6 +157,9 @@ function statusInfo() {
   if (!sessionExists()) {
     return { state: "error", label: "notAuthorized", color: "red", error: trayText("errNotAuthorized", "Not authorized") };
   }
+  if (starting) {
+    return { state: "connecting", label: "connecting", color: "yellow", error: "" };
+  }
   if (!engine) {
     return { state: "error", label: "error", color: "red", error: lastEngineError || "" };
   }
@@ -149,7 +176,7 @@ function updateStatus() {
   if (tray) {
     tray.setToolTip(`Keypulse — ${trayText(info.label, info.label)}`);
     const icons = getTrayIcons();
-    const icon = info.state === "running" ? icons.normal : info.state === "paused" ? icons.yellow : icons.red;
+    const icon = info.state === "running" ? icons.normal : info.state === "paused" || info.state === "connecting" ? icons.yellow : icons.red;
     tray.setImage(icon);
     if (info.state !== lastTrayState) {
       lastTrayState = info.state;
@@ -166,7 +193,7 @@ function createWindow() {
     width: 460,
     height: 760,
     title: `Key Pulse v${APP_VERSION}`,
-    icon: path.join(__dirname, "assets", "logo.jpg"),
+    icon: path.join(__dirname, "assets", "logo.ico"),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -176,12 +203,6 @@ function createWindow() {
     },
   });
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
-  mainWindow.on("close", (e) => {
-    if (!app.isQuitting) {
-      e.preventDefault();
-      mainWindow.hide();
-    }
-  });
 }
 
 function trayIconWithBorder(border) {
@@ -310,6 +331,20 @@ ipcMain.handle("auth:reset", async () => {
   lastEngineError = "";
   updateStatus();
   return { ok: true, authorized: sessionExists() };
+});
+
+ipcMain.handle("bot:sendStart", async () => {
+  if (!engine) {
+    const r = await startEngine();
+    if (!r.ok) return r;
+  }
+  const lang = config.LANGUAGE === "ru" ? "ru" : "en";
+  try {
+    await engine.account.sendMessage(BOT_USERNAME, "/start " + lang);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
 });
 
 // ---- Keywords / exclude words (files auto-reloaded by the running engine) ----
@@ -539,6 +574,6 @@ app.on("before-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  // Keep running in the tray on Windows.
+  app.quit();
 });
 

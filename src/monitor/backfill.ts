@@ -43,15 +43,20 @@ export class Backfiller {
       const chats = this.deps.chatRepo.getMonitored();
       let total = 0;
 
+      let index = 0;
       for (const chat of chats) {
+        index += 1;
         const inputEntity = this.deps.entities.get(chat.id);
         if (!inputEntity) {
           this.deps.logger.warn(`No input entity cached for chat ${chat.id}; skipping backfill.`);
           continue;
         }
         if (force) this.deps.backfillRepo.reset(chat.id);
+        this.deps.logger.info(`Backfilling ${index}/${chats.length}: ${chat.title}…`);
         try {
-          total += await this.scanChat(chat, inputEntity, daysSeconds, limit);
+          const scanned = await this.scanChat(chat, inputEntity, daysSeconds, limit);
+          total += scanned;
+          this.deps.logger.info(`Backfilled ${chat.title}: ${scanned} messages.`);
         } catch (error) {
           this.deps.logger.error(`Backfill failed for chat ${chat.id} (${chat.title}): ${errMsg(error)}`);
         }

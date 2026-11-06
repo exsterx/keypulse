@@ -2,6 +2,7 @@ import WebSocket from "ws";
 import type { Logger } from "../utils/logger";
 import { CommandService, type CommandResult } from "../bot/commands";
 import { errMsg } from "../utils/misc";
+import { t, type Lang } from "../utils/i18n";
 
 interface RequestMessage {
   type: string;
@@ -26,6 +27,7 @@ export class RelayBridge {
     private readonly relayUrl: string,
     private readonly apiKey: string,
     private readonly chatId: number,
+    private readonly language: Lang,
     private readonly commands: CommandService,
     private readonly logger: Logger
   ) {}
@@ -48,7 +50,7 @@ export class RelayBridge {
     this.ws = ws;
 
     ws.on("open", () => {
-      ws.send(JSON.stringify({ type: "hello", api_key: this.apiKey, chat_id: this.chatId }));
+      ws.send(JSON.stringify({ type: "hello", api_key: this.apiKey, chat_id: this.chatId, lang: this.language }));
     });
 
     ws.on("message", (data) => this.handleMessage(data.toString()));
@@ -86,7 +88,7 @@ export class RelayBridge {
           ? this.commands.handleCallback(String(msg.data ?? ""))
           : this.runCommand(String(msg.cmd ?? ""), String(msg.args ?? ""));
     } catch (error) {
-      result = { text: `Ошибка: ${errMsg(error)}` };
+      result = { text: t(this.language, "bridge.error", { error: errMsg(error) }) };
     }
 
     this.ws?.send(
@@ -135,7 +137,7 @@ export class RelayBridge {
       case "include_chat":
         return this.commands.includeChat(args);
       default:
-        return { text: `Неизвестная команда: /${cmd}` };
+        return { text: t(this.language, "bridge.unknownCommand", { cmd }) };
     }
   }
 

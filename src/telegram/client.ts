@@ -38,6 +38,16 @@ export class TelegramAccount {
     return this.connected;
   }
 
+  async getMe(): Promise<number> {
+    const me = await this.client.getMe();
+    return Number(me.id);
+  }
+
+  async sendMessage(username: string, text: string): Promise<void> {
+    const target = username.startsWith("@") ? username : "@" + username;
+    await this.client.sendMessage(target, { message: text });
+  }
+
   async connect(): Promise<void> {
     if (!this.config.sessionString) {
       throw new Error(

@@ -19,10 +19,13 @@
   </header>
 
   <section id="status">
-    <span id="status-dot" class="dot red"></span>
-    <span id="status-text">—</span>
-    <button id="status-details" class="status-details" hidden>?</button>
-    <button id="status-toggle" class="status-toggle" hidden></button>
+    <div class="status-row">
+      <span id="status-dot" class="dot red"></span>
+      <span id="status-text">—</span>
+      <button id="status-details" class="status-details" hidden>?</button>
+      <button id="status-toggle" class="status-toggle" hidden></button>
+    </div>
+    <pre id="log-output" class="log-output"></pre>
   </section>
 
   <nav class="tabs">
@@ -38,9 +41,6 @@
 
     <label data-i18n="apiHash">Telegram API Hash</label>
     <input id="TG_API_HASH" type="text" autocomplete="off">
-
-    <label data-i18n="chatId">Ваш chat_id</label>
-    <input id="TARGET_CHAT_ID" type="text" autocomplete="off">
 
     <label data-i18n="relayUrl">URL релея</label>
     <input id="RELAY_URL" type="text" autocomplete="off">
@@ -70,6 +70,11 @@
       </div>
 
       <div id="auth-result" class="result"></div>
+    </div>
+
+    <div id="bot-start-block" class="bot-start-block" hidden>
+      <button id="bot-start" data-i18n="botStart">Start @KeyPulseMainBot to my Telegram</button>
+      <div id="bot-start-result" class="result"></div>
     </div>
   </section>
 

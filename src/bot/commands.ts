@@ -10,6 +10,7 @@ import type { Monitor } from "../monitor/monitor";
 import type { DigestService } from "../digest/digest";
 import { parseDurationSeconds } from "../utils/misc";
 import { unixSeconds } from "../utils/dates";
+import { t, helpText } from "../utils/i18n";
 
 export interface CommandServices {
   config: AppConfig;
@@ -30,48 +31,33 @@ export interface CommandResult {
   parseMode?: "HTML";
 }
 
-const HELP_TEXT = [
-  "Команды управления:",
-  "/start — приветствие",
-  "/help — справка",
-  "/status — состояние мониторинга",
-  "/keywords — список ключевых слов",
-  "/add КЛЮЧ — добавить ключевое слово",
-  "/remove КЛЮЧ — удалить ключевое слово",
-  "/enable КЛЮЧ — включить отключённое слово",
-  "/disable КЛЮЧ — отключить слово без удаления",
-  "/chats — список отслеживаемых чатов",
-  "/pause — приостановить мониторинг",
-  "/resume — возобновить мониторинг",
-  "/stats — статистика совпадений",
-  "/digest — сводка за последние сутки",
-  "/scan 7d — сканировать историю (7d, 24h, 30d…)",
-  "/exclude — список исключённых чатов",
-  "/exclude_chat ID — исключить чат",
-  "/include_chat ID — вернуть чат в мониторинг",
-].join("\n");
-
 export class CommandService {
   constructor(private readonly s: CommandServices) {}
 
+  private t(key: string, vars?: Record<string, string | number>): string {
+    return t(this.s.config.language, key, vars);
+  }
+
   help(): CommandResult {
-    return { text: HELP_TEXT };
+    return { text: helpText(this.s.config.language) };
   }
 
   status(): CommandResult {
     const keywords = this.s.keywordManager.list();
     const active = keywords.filter((k) => k.enabled).length;
+    const state = this.s.monitor.isPaused() ? this.t("status.paused") : this.t("status.active");
+    const account = this.s.account.isConnected() ? this.t("status.connected") : this.t("status.disconnected");
     return {
       text: [
-        `Состояние: ${this.s.monitor.isPaused() ? "⏸ приостановлен" : "▶ активен"}`,
-        `Аккаунт Telegram: ${this.s.account.isConnected() ? "✅ подключён" : "❌ не подключён"}`,
-        `Режим мониторинга: ${this.s.config.monitorMode}`,
-        `Режим поиска: ${this.s.matcher.getMode()}`,
-        `Часовой пояс: ${this.s.config.timezone}`,
-        `Отслеживается чатов: ${this.s.chatRepo.getMonitored().length}`,
-        `Исключено чатов: ${this.s.chatRepo.getExcluded().length}`,
-        `Ключевых слов: ${active} активных из ${keywords.length}`,
-        `Совпадений всего: ${this.s.messageRepo.total()}`,
+        this.t("status.state", { state }),
+        this.t("status.account", { state: account }),
+        this.t("status.monitorMode", { mode: this.s.config.monitorMode }),
+        this.t("status.searchMode", { mode: this.s.matcher.getMode() }),
+        this.t("status.timezone", { tz: this.s.config.timezone }),
+        this.t("status.monitoredChats", { n: this.s.chatRepo.getMonitored().length }),
+        this.t("status.excludedChats", { n: this.s.chatRepo.getExcluded().length }),
+        this.t("status.keywords", { active, total: keywords.length }),
+        this.t("status.totalMatches", { n: this.s.messageRepo.total() }),
       ].join("\n"),
     };
   }
@@ -79,7 +65,7 @@ export class CommandService {
   chats(): CommandResult {
     const chats = this.s.chatRepo.getMonitored();
     if (chats.length === 0) {
-      return { text: "Нет отслеживаемых чатов." };
+      return { text: this.t("chats.empty") };
     }
     return { text: chats.map((c) => `• ${c.title} (${c.type}, id: ${c.id})`).join("\n") };
   }
@@ -87,60 +73,64 @@ export class CommandService {
   keywords(): CommandResult {
     const keywords = this.s.keywordManager.list();
     if (keywords.length === 0) {
-      return { text: "Ключевых слов нет. Добавьте их в keywords.txt или командой /add." };
+      return { text: this.t("keywords.empty") };
     }
-    return { text: keywords.map((k) => (k.enabled ? `• ${k.phrase}` : `• ${k.phrase} (отключено)`)).join("\n") };
+    return {
+      text: keywords
+        .map((k) => (k.enabled ? `• ${k.phrase}` : `• ${k.phrase} (${this.t("keywords.disabled")})`))
+        .join("\n"),
+    };
   }
 
   addKeyword(args: string): CommandResult {
     const phrase = args.trim();
-    if (!phrase) return { text: "Укажите ключевое слово: /add airdrop checker" };
-    if (this.s.keywordManager.add(phrase)) return { text: `✅ Добавлено: ${phrase}` };
-    return { text: `⚠️ Ключевое слово «${phrase}» уже существует.` };
+    if (!phrase) return { text: this.t("kw.addUsage") };
+    if (this.s.keywordManager.add(phrase)) return { text: this.t("kw.added", { phrase }) };
+    return { text: this.t("kw.exists", { phrase }) };
   }
 
   removeKeyword(args: string): CommandResult {
     const phrase = args.trim();
-    if (!phrase) return { text: "Укажите ключевое слово: /remove airdrop" };
-    if (this.s.keywordManager.remove(phrase)) return { text: `✅ Удалено: ${phrase}` };
-    return { text: `⚠️ Ключевое слово «${phrase}» не найдено.` };
+    if (!phrase) return { text: this.t("kw.removeUsage") };
+    if (this.s.keywordManager.remove(phrase)) return { text: this.t("kw.removed", { phrase }) };
+    return { text: this.t("kw.notFound", { phrase }) };
   }
 
   enableKeyword(args: string): CommandResult {
     const phrase = args.trim();
-    if (!phrase) return { text: "Укажите ключевое слово: /enable airdrop" };
-    if (this.s.keywordManager.setEnabled(phrase, true)) return { text: `✅ Включено: ${phrase}` };
-    return { text: `⚠️ Слово «${phrase}» не найдено или уже включено.` };
+    if (!phrase) return { text: this.t("kw.enableUsage") };
+    if (this.s.keywordManager.setEnabled(phrase, true)) return { text: this.t("kw.enabled", { phrase }) };
+    return { text: this.t("kw.enableFail", { phrase }) };
   }
 
   disableKeyword(args: string): CommandResult {
     const phrase = args.trim();
-    if (!phrase) return { text: "Укажите ключевое слово: /disable airdrop" };
-    if (this.s.keywordManager.setEnabled(phrase, false)) return { text: `🔕 Отключено (без удаления): ${phrase}` };
-    return { text: `⚠️ Слово «${phrase}» не найдено или уже отключено.` };
+    if (!phrase) return { text: this.t("kw.disableUsage") };
+    if (this.s.keywordManager.setEnabled(phrase, false)) return { text: this.t("kw.disabled", { phrase }) };
+    return { text: this.t("kw.disableFail", { phrase }) };
   }
 
   pause(): CommandResult {
     this.s.monitor.pause();
-    return { text: "⏸ Мониторинг приостановлен." };
+    return { text: this.t("monitor.paused") };
   }
 
   resume(): CommandResult {
     this.s.monitor.resume();
-    return { text: "▶ Мониторинг возобновлён." };
+    return { text: this.t("monitor.resumed") };
   }
 
   stats(): CommandResult {
     const stats = this.s.digest.computeStats(unixSeconds() - 86400);
     return {
       text: [
-        `Всего совпадений: ${stats.total}`,
-        `За последние 24 часа: ${stats.last24h}`,
+        this.t("stats.total", { n: stats.total }),
+        this.t("stats.last24h", { n: stats.last24h }),
         ``,
-        `🔑 Топ ключевых слов:`,
+        this.t("stats.topKeywords"),
         ...stats.topKeywords.slice(0, 10).map((k) => `  • ${k.keyword} — ${k.count}`),
         ``,
-        `📡 Топ источников:`,
+        this.t("stats.topChats"),
         ...stats.topChats.slice(0, 10).map((c) => `  • ${c.chat} — ${c.count}`),
       ].join("\n"),
     };
@@ -150,44 +140,44 @@ export class CommandService {
     const since = unixSeconds() - 86400;
     const until = unixSeconds();
     const count = this.s.messageRepo.getMatchesBetween(since, until).length;
-    if (count === 0) return { text: "За последние сутки совпадений нет." };
+    if (count === 0) return { text: this.t("digest.empty") };
     return { text: this.s.digest.buildDigest(since, until), parseMode: "HTML" };
   }
 
   scan(args: string): CommandResult {
     if (this.s.monitor.backfiller.isRunning()) {
-      return { text: "⏳ Сканирование уже выполняется." };
+      return { text: this.t("scan.running") };
     }
     const seconds = parseDurationSeconds(args || undefined, this.s.config.backfillDays);
     const days = Math.max(1, Math.round(seconds / 86400));
     void this.s.monitor.backfiller
       .scanAll(seconds, this.s.config.backfillLimit, true)
       .catch((error) => this.s.logger.error(`Scan failed: ${String(error)}`));
-    return { text: `🚀 Запускаю сканирование истории за последние ${days} дн…` };
+    return { text: this.t("scan.start", { days }) };
   }
 
   exclude(): CommandResult {
     const excluded = this.s.chatRepo.getExcluded();
-    if (excluded.length === 0) return { text: "Нет исключённых чатов." };
+    if (excluded.length === 0) return { text: this.t("exclude.empty") };
     return { text: excluded.map((c) => `• ${c.title} (id: ${c.id})`).join("\n") };
   }
 
   excludeChat(args: string): CommandResult {
     const id = parseInt(args, 10);
-    if (!Number.isFinite(id)) return { text: "Укажите ID чата: /exclude_chat 123456789" };
+    if (!Number.isFinite(id)) return { text: this.t("exclude.usage") };
     const chat = this.s.chatRepo.getById(id);
-    if (!chat) return { text: `⚠️ Чат с id ${id} не найден.` };
+    if (!chat) return { text: this.t("exclude.notFound", { id }) };
     this.s.chatRepo.setMonitored(id, false);
-    return { text: `🚫 Чат «${chat.title}» исключён из мониторинга.` };
+    return { text: this.t("exclude.done", { title: chat.title }) };
   }
 
   includeChat(args: string): CommandResult {
     const id = parseInt(args, 10);
-    if (!Number.isFinite(id)) return { text: "Укажите ID чата: /include_chat 123456789" };
+    if (!Number.isFinite(id)) return { text: this.t("include.usage") };
     const chat = this.s.chatRepo.getById(id);
-    if (!chat) return { text: `⚠️ Чат с id ${id} не найден.` };
+    if (!chat) return { text: this.t("exclude.notFound", { id }) };
     this.s.chatRepo.setMonitored(id, true);
-    return { text: `✅ Чат «${chat.title}» возвращён в мониторинг.` };
+    return { text: this.t("include.done", { title: chat.title }) };
   }
 
   handleCallback(data: string): CommandResult {
@@ -195,29 +185,27 @@ export class CommandService {
     if (exclude) {
       const id = parseInt(exclude[1], 10);
       const chat = this.s.chatRepo.getById(id);
-      if (!chat) return { callbackAnswer: "Чат не найден." };
+      if (!chat) return { callbackAnswer: this.t("cb.chatNotFound") };
       this.s.chatRepo.setMonitored(id, false);
-      return { callbackAnswer: `Чат «${chat.title}» исключён из мониторинга.` };
+      return { callbackAnswer: this.t("exclude.done", { title: chat.title }) };
     }
     const include = /^include:(-?\d+)$/.exec(data);
     if (include) {
       const id = parseInt(include[1], 10);
       const chat = this.s.chatRepo.getById(id);
-      if (!chat) return { callbackAnswer: "Чат не найден." };
+      if (!chat) return { callbackAnswer: this.t("cb.chatNotFound") };
       this.s.chatRepo.setMonitored(id, true);
-      return { callbackAnswer: `Чат «${chat.title}» возвращён в мониторинг.` };
+      return { callbackAnswer: this.t("include.done", { title: chat.title }) };
     }
     const kwdel = /^kwdel:(\d+)$/.exec(data);
     if (kwdel) {
       const id = parseInt(kwdel[1], 10);
       const keyword = this.s.keywordManager.list().find((k) => k.id === id);
-      if (!keyword) return { callbackAnswer: "Ключевое слово не найдено." };
+      if (!keyword) return { callbackAnswer: this.t("cb.keywordNotFound") };
       this.s.keywordManager.remove(keyword.phrase);
-      return { callbackAnswer: `Ключ «${keyword.phrase}» удалён.` };
+      return { callbackAnswer: this.t("cb.keywordDeleted", { phrase: keyword.phrase }) };
     }
-    return { callbackAnswer: "Неизвестное действие." };
+    return { callbackAnswer: this.t("cb.unknown") };
   }
 }
-
-export { HELP_TEXT };
 

@@ -70,9 +70,15 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
   await keywordManager.init();
 
   const account = new TelegramAccount(config, logger);
+
+  // Connect first so we can derive the recipient chat id from the
+  // authenticated account (a private chat with the bot has chat_id == user_id).
+  await account.connect();
+  const targetChatId = await account.getMe();
+
   const relaySender = createRelaySender(config.relayUrl, config.relayApiKey);
 
-  const notifier = new Notifier(relaySender, messageRepo, notificationRepo, config, logger);
+  const notifier = new Notifier(relaySender, messageRepo, notificationRepo, config, targetChatId, logger);
 
   const processor = new MessageProcessor({ chatRepo, messageRepo, matcher, notifier, logger });
   const entities = new Map<number, Api.TypeInputPeer>();
@@ -88,7 +94,7 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
     logger,
   });
 
-  const digest = new DigestService(messageRepo, config.timezone, relaySender, config.targetChatId, logger);
+  const digest = new DigestService(messageRepo, config.timezone, config.language, relaySender, targetChatId, logger);
 
   const services = {
     config,
@@ -105,10 +111,9 @@ export async function startApp(config: AppConfig, logger: Logger): Promise<AppHa
 
   let relayBridge: RelayBridge | undefined;
   const commandService = new CommandService(services);
-  relayBridge = new RelayBridge(config.relayUrl, config.relayApiKey, config.targetChatId, commandService, logger);
+  relayBridge = new RelayBridge(config.relayUrl, config.relayApiKey, targetChatId, config.language, commandService, logger);
   relayBridge.start();
 
-  await account.connect();
   await monitor.start();
 
   let digestScheduler: SchedulerHandle | undefined;

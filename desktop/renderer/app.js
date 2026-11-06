@@ -3,6 +3,7 @@ const $ = (id) => document.getElementById(id);
 let locale = {};
 let currentLang = "en";
 let lastStatusState = null;
+let wasConnecting = false;
 
 function t(key) {
   return locale[key] || key;
@@ -32,6 +33,12 @@ function renderStatus(status) {
   $("status-text").textContent = t(status && status.label ? status.label : "noConnection");
   lastStatusState = status && status.state ? status.state : null;
 
+  const connecting = !!(status && status.state === "connecting");
+  if (connecting && !wasConnecting) {
+    $("log-output").textContent = "";
+  }
+  wasConnecting = connecting;
+
   const err = status && status.error ? status.error : "";
   const detailsBtn = $("status-details");
   detailsBtn.hidden = !err;
@@ -57,13 +64,13 @@ async function refresh() {
 
   $("TG_API_ID").value = c.TG_API_ID || "";
   $("TG_API_HASH").value = c.TG_API_HASH || "";
-  $("TARGET_CHAT_ID").value = c.TARGET_CHAT_ID || "";
   $("RELAY_URL").value = c.RELAY_URL || "";
   $("RELAY_API_KEY").value = c.RELAY_API_KEY || "";
 
   const authorized = !!state.authorized;
   $("auth-form").hidden = authorized;
   $("auth-authorized").hidden = !authorized;
+  $("bot-start-block").hidden = !authorized;
 
   renderStatus(state.status);
 }
@@ -72,7 +79,6 @@ function collectConfig() {
   return {
     TG_API_ID: $("TG_API_ID").value.trim(),
     TG_API_HASH: $("TG_API_HASH").value.trim(),
-    TARGET_CHAT_ID: $("TARGET_CHAT_ID").value.trim(),
     RELAY_URL: $("RELAY_URL").value.trim(),
     RELAY_API_KEY: $("RELAY_API_KEY").value.trim(),
     LANGUAGE: $("lang").value,
@@ -114,6 +120,10 @@ $("status-toggle").onclick = async () => {
 $("auth-reset").onclick = async () => {
   await window.keypulse.resetAuth();
   await refresh();
+};
+$("bot-start").onclick = async () => {
+  const res = await window.keypulse.sendBotStart();
+  $("bot-start-result").textContent = res && res.ok ? t("botStartDone") : t("engineError") + (res && res.error ? ": " + res.error : "");
 };
 $("status-modal-close").onclick = () => { $("status-modal").hidden = true; };
 $("status-modal").addEventListener("click", (e) => {
@@ -293,6 +303,18 @@ async function renderChats() {
 }
 
 window.keypulse.onStatus((status) => renderStatus(status));
+
+function appendLog(line) {
+  const out = $("log-output");
+  if (!out) return;
+  const lines = out.textContent ? out.textContent.split("\n") : [];
+  lines.push(String(line ?? ""));
+  while (lines.length > 500) lines.shift();
+  out.textContent = lines.join("\n");
+  out.scrollTop = out.scrollHeight;
+}
+
+window.keypulse.onLog(appendLog);
 
 $("lang").onchange = async () => {
   setLang($("lang").value);

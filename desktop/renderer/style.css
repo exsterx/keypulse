@@ -85,14 +85,17 @@ button {
 button:hover { background: #4a7eb5; }
 
 #status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   padding: 12px;
   background: #1f232b;
   border-radius: 8px;
-  font-weight: 600;
   margin-bottom: 16px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
 }
 
 .dot {
@@ -104,6 +107,22 @@ button:hover { background: #4a7eb5; }
 .dot.green { background: #2ecc71; }
 .dot.yellow { background: #f1c40f; }
 .dot.red { background: #e74c3c; }
+
+.log-output {
+  margin: 10px 0 0;
+  padding: 8px;
+  height: 96px;
+  overflow-y: auto;
+  background: #0b0d10;
+  border: 1px solid #2c313a;
+  border-radius: 6px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #9cdcfe;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 #auth-result {
   margin-top: 8px;
@@ -260,6 +279,12 @@ button:hover { background: #4a7eb5; }
   color: #2ecc71;
   font-weight: 600;
   margin-bottom: 10px;
+}
+
+.bot-start-block {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #2c313a;
 }
 
 #auth-reset {

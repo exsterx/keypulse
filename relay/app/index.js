@@ -20,8 +20,28 @@ const bot = new Telegraf(BOT_TOKEN);
 
 // ---- WebSocket command routing ----
 const clients = new Map(); // chat_id (string) -> WebSocket
+const langs = new Map(); // chat_id (string) -> "en" | "ru"
 const pending = new Map(); // requestId -> { resolve, timeout }
 let seq = 0;
+
+const STRINGS = {
+  en: {
+    start: (id) => `Connected. Your chat_id: ${id}. The monitoring app must be running.`,
+    clientNotConnected: "Client is not connected. The monitoring app must be running.",
+    clientOffline: "Client is not connected.",
+    done: "Done",
+  },
+  ru: {
+    start: (id) => `Подключено. Ваш chat_id: ${id}. Приложение мониторинга должно быть запущено.`,
+    clientNotConnected: "Клиент не подключён. Приложение мониторинга должно быть запущено.",
+    clientOffline: "Клиент не подключён.",
+    done: "Готово",
+  },
+};
+
+function langFor(chatId) {
+  return langs.get(String(chatId)) === "ru" ? "ru" : "en";
+}
 
 function sendRequest(chatId, payload) {
   const ws = clients.get(String(chatId));
@@ -61,7 +81,7 @@ function splitMessage(text, max = 4096) {
 async function replyViaClient(ctx, chatId, payload) {
   const res = await sendRequest(chatId, payload);
   if (!res) {
-    await ctx.reply("Клиент не подключён. Приложение мониторинга должно быть запущено.");
+    await ctx.reply(STRINGS[langFor(chatId)].clientNotConnected);
     return;
   }
   if (res.text) {
@@ -79,9 +99,10 @@ function argAfter(ctx) {
 }
 
 // ---- Bot handlers ----
-bot.start((ctx) =>
-  ctx.reply(`Подключено. Ваш chat_id: ${ctx.chat.id}. Приложение мониторинга должно быть запущено.`)
-);
+bot.start((ctx) => {
+  const lang = argAfter(ctx) === "ru" ? "ru" : "en";
+  return ctx.reply(STRINGS[lang].start(ctx.chat.id));
+});
 
 const COMMANDS = [
   "help", "status", "chats", "keywords", "add", "remove", "enable", "disable",
@@ -99,10 +120,10 @@ bot.action(/^.+$/, async (ctx) => {
   if (!chatId) return;
   const res = await sendRequest(chatId, { kind: "callback", data });
   if (!res) {
-    await ctx.answerCbQuery("Клиент не подключён.");
+    await ctx.answerCbQuery(STRINGS[langFor(chatId)].clientOffline);
     return;
   }
-  await ctx.answerCbQuery(res.callbackAnswer || "Готово");
+  await ctx.answerCbQuery(res.callbackAnswer || STRINGS[langFor(chatId)].done);
 });
 
 // ---- HTTP API ----
@@ -153,6 +174,7 @@ fastify
             return;
           }
           clients.set(String(msg.chat_id), ws);
+          langs.set(String(msg.chat_id), msg.lang === "ru" ? "ru" : "en");
           console.log("client registered", msg.chat_id);
         } else if (msg.type === "res") {
           const p = pending.get(String(msg.id));
