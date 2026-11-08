@@ -21,6 +21,8 @@ interface RequestMessage {
 export class RelayBridge {
   private ws: WebSocket | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private heartbeatTimer: NodeJS.Timeout | null = null;
+  private alive = true;
   private stopped = false;
 
   constructor(
@@ -50,14 +52,20 @@ export class RelayBridge {
     this.ws = ws;
 
     ws.on("open", () => {
+      this.startHeartbeat();
       ws.send(JSON.stringify({ type: "hello", api_key: this.apiKey, chat_id: this.chatId, lang: this.language }));
     });
 
     ws.on("message", (data) => this.handleMessage(data.toString()));
 
+    ws.on("pong", () => {
+      this.alive = true;
+    });
+
     ws.on("error", (error) => this.logger.error(`Relay WS error: ${errMsg(error)}`));
 
     ws.on("close", () => {
+      this.stopHeartbeat();
       this.logger.warn("Relay WS closed; reconnecting in 5s.");
       this.scheduleReconnect();
     });
@@ -70,6 +78,29 @@ export class RelayBridge {
       this.connect();
     }, 5000);
     this.reconnectTimer.unref();
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.alive = true;
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+      if (!this.alive) {
+        this.logger.warn("Relay WS heartbeat timeout; terminating stale connection.");
+        this.ws.terminate();
+        return;
+      }
+      this.alive = false;
+      this.ws.ping();
+    }, 30000);
+    this.heartbeatTimer.unref();
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 
   private handleMessage(raw: string): void {
@@ -143,6 +174,7 @@ export class RelayBridge {
 
   stop(): void {
     this.stopped = true;
+    this.stopHeartbeat();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;

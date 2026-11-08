@@ -5,6 +5,9 @@ let currentLang = "en";
 let lastStatusState = null;
 let wasConnecting = false;
 
+const PAUSE_ICON = '<circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/>';
+const PLAY_ICON = '<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>';
+
 function t(key) {
   return locale[key] || key;
 }
@@ -28,9 +31,10 @@ function setLang(lang) {
 }
 
 function renderStatus(status) {
-  const dot = $("status-dot");
-  dot.className = "dot " + (status && status.color ? status.color : "red");
-  $("status-text").textContent = t(status && status.label ? status.label : "noConnection");
+  const badge = $("status-badge");
+  const color = status && status.color === "green" ? "running" : status && status.color === "yellow" ? "connecting" : "error";
+  badge.className = "status-badge " + color;
+  badge.textContent = t(status && status.label ? status.label : "noConnection");
   lastStatusState = status && status.state ? status.state : null;
 
   const connecting = !!(status && status.state === "connecting");
@@ -40,18 +44,22 @@ function renderStatus(status) {
   wasConnecting = connecting;
 
   const err = status && status.error ? status.error : "";
-  const detailsBtn = $("status-details");
-  detailsBtn.hidden = !err;
-  detailsBtn.onclick = () => {
-    $("status-modal-text").textContent = err;
-    $("status-modal").hidden = false;
-  };
+  badge.onclick = err
+    ? () => {
+        $("status-modal-text").textContent = err;
+        $("status-modal").hidden = false;
+      }
+    : null;
+  badge.style.cursor = err ? "pointer" : "default";
+  badge.title = err || "";
 
   const toggle = $("status-toggle");
   const controllable = status && (status.state === "running" || status.state === "paused");
   toggle.hidden = !controllable;
   if (controllable) {
-    toggle.textContent = status.state === "paused" ? t("enableMonitor") : t("disableMonitor");
+    const paused = status.state === "paused";
+    toggle.querySelector("svg").innerHTML = paused ? PLAY_ICON : PAUSE_ICON;
+    toggle.querySelector("span").textContent = t(paused ? "enableMonitor" : "disableMonitor");
   }
 }
 
@@ -89,23 +97,25 @@ async function save() {
   await window.keypulse.saveConfig(collectConfig());
   const res = await window.keypulse.restartEngine();
   if (res && res.ok) {
-    $("save-result").textContent = t("saved");
+    appendLogColor(t("saved"), "log-ok");
   } else {
-    $("save-result").textContent = t("engineError") + (res && res.error ? ": " + res.error : "");
+    appendLogColor(t("engineError") + (res && res.error ? ": " + res.error : ""), "log-error");
   }
   await refresh();
 }
-
 // ---- Tabs ----
 function switchTab(name) {
-  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab-panel").forEach((p) => (p.hidden = p.id !== "tab-" + name));
   if (name === "chats") void renderChats();
   if (name === "keywords") void renderKeywords();
 }
 
-document.querySelectorAll(".tab").forEach((b) => {
-  b.addEventListener("click", () => switchTab(b.dataset.tab));
+document.querySelectorAll(".nav-item").forEach((b) => {
+  b.addEventListener("click", (e) => {
+    e.preventDefault();
+    switchTab(b.dataset.tab);
+  });
 });
 
 let pendingPrompt = null;
@@ -123,7 +133,11 @@ $("auth-reset").onclick = async () => {
 };
 $("bot-start").onclick = async () => {
   const res = await window.keypulse.sendBotStart();
-  $("bot-start-result").textContent = res && res.ok ? t("botStartDone") : t("engineError") + (res && res.error ? ": " + res.error : "");
+  if (res && res.ok) {
+    appendLogColor(t("botStartDone"), "log-ok");
+  } else {
+    appendLogColor(t("engineError") + (res && res.error ? ": " + res.error : ""), "log-error");
+  }
 };
 $("status-modal-close").onclick = () => { $("status-modal").hidden = true; };
 $("status-modal").addEventListener("click", (e) => {
@@ -184,20 +198,19 @@ $("prompt-submit").onclick = () => {
   else window.keypulse.sendAuthPassword(v);
   $("auth-prompt").hidden = true;
 };
-
 // ---- Keywords ----
 function kwItem(entry, kind) {
   const li = document.createElement("li");
-  li.className = "kw-item" + (entry.enabled ? "" : " kw-off");
+  li.className = "item" + (entry.enabled ? "" : " off");
 
   const span = document.createElement("span");
-  span.className = "kw-phrase";
+  span.className = "item-phrase";
   span.textContent = entry.phrase;
   li.appendChild(span);
 
   if (kind === "kw") {
     const toggleBtn = document.createElement("button");
-    toggleBtn.className = "kw-toggle";
+    toggleBtn.className = "item-btn";
     toggleBtn.textContent = entry.enabled ? "✓" : "○";
     toggleBtn.title = entry.enabled ? t("disable") : t("enable");
     toggleBtn.addEventListener("click", async () => {
@@ -208,8 +221,8 @@ function kwItem(entry, kind) {
   }
 
   const delBtn = document.createElement("button");
-  delBtn.className = "kw-del";
-  delBtn.textContent = "🗑";
+  delBtn.className = "item-btn danger";
+  delBtn.textContent = "✕";
   delBtn.title = t("delete");
   delBtn.addEventListener("click", async () => {
     if (kind === "kw") await window.keypulse.removeKeyword(entry.phrase);
@@ -225,7 +238,7 @@ function fillList(listEl, entries, emptyKey, kind) {
   listEl.innerHTML = "";
   if (!entries.length) {
     const li = document.createElement("li");
-    li.className = "kw-empty";
+    li.className = "empty";
     li.textContent = t(emptyKey);
     listEl.appendChild(li);
     return;
@@ -265,15 +278,15 @@ $("ex-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("ex-
 // ---- Chats ----
 function chatItem(c) {
   const li = document.createElement("li");
-  li.className = "kw-item kw-off";
+  li.className = "item off";
 
   const span = document.createElement("span");
-  span.className = "kw-phrase";
+  span.className = "item-phrase";
   span.textContent = (c.title || c.username || "#" + c.id) + " · " + c.type;
   li.appendChild(span);
 
   const btn = document.createElement("button");
-  btn.className = "kw-toggle";
+  btn.className = "item-btn";
   btn.textContent = t("restore");
   btn.title = t("restore");
   btn.addEventListener("click", async () => {
@@ -293,7 +306,7 @@ async function renderChats() {
     const excluded = (data.chats || []).filter((c) => !c.isMonitored);
     if (!excluded.length) {
       const li = document.createElement("li");
-      li.className = "kw-empty";
+      li.className = "empty";
       li.textContent = t("chatsEmpty");
       listEl.appendChild(li);
       return;
@@ -304,14 +317,23 @@ async function renderChats() {
 
 window.keypulse.onStatus((status) => renderStatus(status));
 
-function appendLog(line) {
+function appendLogSpan(line, className) {
   const out = $("log-output");
   if (!out) return;
-  const lines = out.textContent ? out.textContent.split("\n") : [];
-  lines.push(String(line ?? ""));
-  while (lines.length > 500) lines.shift();
-  out.textContent = lines.join("\n");
+  const span = document.createElement("span");
+  span.textContent = String(line ?? "");
+  if (className) span.className = className;
+  out.appendChild(span);
+  while (out.children.length > 500) out.removeChild(out.firstChild);
   out.scrollTop = out.scrollHeight;
+}
+
+function appendLog(line) {
+  appendLogSpan(line, null);
+}
+
+function appendLogColor(line, className) {
+  appendLogSpan(line, className);
 }
 
 window.keypulse.onLog(appendLog);
@@ -319,13 +341,15 @@ window.keypulse.onLog(appendLog);
 $("lang").onchange = async () => {
   setLang($("lang").value);
   await window.keypulse.saveConfig(collectConfig());
+  await window.keypulse.restartEngine();
+  await refresh();
 };
 
-// Set app version from package.json (exposed via preload)
 if (window.keypulse.appVersion) {
   document.title = "Key Pulse v" + window.keypulse.appVersion;
-  const v = document.querySelector(".version");
-  if (v) v.textContent = "v" + window.keypulse.appVersion;
+  $("app-version").textContent = window.keypulse.appVersion;
 }
 
 refresh();
+
+

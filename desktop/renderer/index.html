@@ -2,119 +2,180 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Key Pulse v0.1.0</title>
+  <title>Key Pulse</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <img src="../assets/logo.jpg" alt="Key Pulse" class="logo">
-      <h1>Key Pulse</h1>
-      <span class="version">v0.1.0</span>
-    </div>
+  <header id="app-header">
+    <span class="version">Version <span id="app-version"></span></span>
     <select id="lang">
       <option value="en">English</option>
       <option value="ru">Русский</option>
     </select>
   </header>
 
-  <section id="status">
-    <div class="status-row">
-      <span id="status-dot" class="dot red"></span>
-      <span id="status-text">—</span>
-      <button id="status-details" class="status-details" hidden>?</button>
-      <button id="status-toggle" class="status-toggle" hidden></button>
-    </div>
-    <pre id="log-output" class="log-output"></pre>
-  </section>
-
-  <nav class="tabs">
-    <button class="tab active" data-tab="settings" data-i18n="tabSettings">Настройки</button>
-    <button class="tab" data-tab="auth" data-i18n="tabAuth">Авторизация</button>
-    <button class="tab" data-tab="keywords" data-i18n="tabKeywords">Ключевые слова</button>
-    <button class="tab" data-tab="chats" data-i18n="tabChats">Исключённые чаты</button>
-  </nav>
-
-  <section id="tab-settings" class="tab-panel card">
-    <label data-i18n="apiId">Telegram API ID</label>
-    <input id="TG_API_ID" type="text" autocomplete="off">
-
-    <label data-i18n="apiHash">Telegram API Hash</label>
-    <input id="TG_API_HASH" type="text" autocomplete="off">
-
-    <label data-i18n="relayUrl">URL релея</label>
-    <input id="RELAY_URL" type="text" autocomplete="off">
-
-    <label data-i18n="relayKey">API-ключ релея</label>
-    <input id="RELAY_API_KEY" type="text" data-i18n-placeholder="relayKeyHint" autocomplete="off">
-
-    <button id="save" data-i18n="save">Сохранить</button>
-    <div id="save-result" class="result"></div>
-  </section>
-
-  <section id="tab-auth" class="tab-panel card" hidden>
-    <div id="auth-authorized" hidden>
-      <div class="auth-badge"><span data-i18n="authorized">Авторизован</span></div>
-      <button id="auth-reset" data-i18n="resetAuth">Сбросить</button>
-    </div>
-
-    <div id="auth-form">
-      <label data-i18n="phone">Номер телефона</label>
-      <input id="phone" type="text" data-i18n-placeholder="phoneHint" autocomplete="off">
-      <button id="authorize" data-i18n="authorize">Авторизовать аккаунт</button>
-
-      <div id="auth-prompt" hidden>
-        <label id="prompt-label"></label>
-        <input id="prompt-value" type="text" autocomplete="off">
-        <button id="prompt-submit" data-i18n="submit">Подтвердить</button>
+  <aside id="app-sidebar">
+    <div>
+      <div class="logo-block">
+        <div class="logo-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+            <defs>
+              <filter id="greenGlow" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="9" result="blur"></feGaussianBlur>
+                <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+              </filter>
+              <filter id="redGlow" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="7" result="blur"></feGaussianBlur>
+                <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+              </filter>
+            </defs>
+            <rect width="640" height="640" fill="transparent"></rect>
+            <path d="M20 320 H88 L99 308 L110 326 L124 319 L148 208 L161 398 L180 296 L194 321 H216 L230 250 L245 361 L260 292 L278 320 H356 L374 307 L386 330 L399 300 L411 358 L429 315 L443 220 L464 405 L481 298 L497 320 L511 309 L525 338 L540 315 H620" fill="none" stroke="#ff2855" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" filter="url(#redGlow)"></path>
+            <path d="M320 102 C281 102 255 131 255 168 C255 199 272 224 299 237 L301 264 L310 279 L310 487 L306 502 L306 526 Q306 539 320 546 Q334 539 334 526 L334 518 L369 518 L369 502 L348 502 L348 488 L369 488 L369 472 L348 472 L348 456 L369 456 L369 439 L334 439 L334 237 C361 224 385 199 385 168 C385 131 358 102 320 102 Z" fill="none" stroke="#7cff35" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" filter="url(#greenGlow)"></path>
+            <path d="M284 184 C275 176 277 160 287 154 C289 138 303 126 319 126 C335 126 346 138 348 151 C361 151 370 162 370 174 C370 187 359 197 346 197 H291 C280 197 274 190 284 184 Z" fill="none" stroke="#7cff35" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#greenGlow)"></path>
+          </svg>
+        </div>
+        <h1 class="brand">Key Pulse</h1>
       </div>
 
-      <div id="auth-result" class="result"></div>
+      <nav id="app-nav">
+        <a class="nav-item active" data-tab="keywords" href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>
+          <span data-i18n="tabKeywords">Keywords</span>
+        </a>
+        <a class="nav-item" data-tab="chats" href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+          <span data-i18n="tabChats">Excluded chats</span>
+        </a>
+        <a class="nav-item" data-tab="auth" href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          <span data-i18n="tabAuth">Authorization</span>
+        </a>
+        <a class="nav-item" data-tab="settings" href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          <span data-i18n="tabSettings">Settings</span>
+        </a>
+      </nav>
     </div>
 
-    <div id="bot-start-block" class="bot-start-block" hidden>
-      <button id="bot-start" data-i18n="botStart">Start @KeyPulseMainBot to my Telegram</button>
-      <div id="bot-start-result" class="result"></div>
+    <div class="support-block">
+      <a class="support-link" id="donate" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        <span data-i18n="donate">Support the project</span>
+      </a>
     </div>
-  </section>
+  </aside>
 
-  <section id="tab-keywords" class="tab-panel card" hidden>
-    <h2 data-i18n="keywordsTitle">Ключевые слова</h2>
-    <p class="hint" data-i18n="keywordsHint"></p>
-    <div class="kw-add">
-      <input id="kw-input" type="text" data-i18n-placeholder="kwPlaceholder" autocomplete="off">
-      <button id="kw-add" data-i18n="add">Добавить</button>
-    </div>
-    <ul id="kw-list" class="kw-list"></ul>
+  <main id="app-main">
+    <section class="telemetry">
+      <div class="telemetry-head">
+        <span class="status-badge running" id="status-badge">—</span>
+        <button class="btn-secondary" id="status-toggle" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+          <span data-i18n="disableMonitor">Disable monitor</span>
+        </button>
+      </div>
+      <div class="log-output" id="log-output"></div>
+    </section>
+    <section class="tab-panel" id="tab-keywords">
+      <p class="hint" data-i18n="keywordsHint"></p>
+      <div class="section">
+        <div class="add-row">
+          <div class="field-input-wrap">
+            <input class="field-input" id="kw-input" data-i18n-placeholder="kwPlaceholder" autocomplete="off">
+          </div>
+          <button class="btn btn-primary" id="kw-add" data-i18n="add">Add</button>
+        </div>
+        <ul class="item-list" id="kw-list"></ul>
+      </div>
+      <div class="section divider">
+        <h2 class="panel-title pink" data-i18n="excludesTitle">Stop-words</h2>
+        <p class="hint" data-i18n="excludesHint"></p>
+        <div class="add-row">
+          <div class="field-input-wrap">
+            <input class="field-input" id="ex-input" data-i18n-placeholder="exPlaceholder" autocomplete="off">
+          </div>
+          <button class="btn btn-primary" id="ex-add" data-i18n="add">Add</button>
+        </div>
+        <ul class="item-list" id="ex-list"></ul>
+      </div>
+    </section>
 
-    <h2 data-i18n="excludesTitle">Стоп-слова</h2>
-    <p class="hint" data-i18n="excludesHint"></p>
-    <div class="kw-add">
-      <input id="ex-input" type="text" data-i18n-placeholder="exPlaceholder" autocomplete="off">
-      <button id="ex-add" data-i18n="add">Добавить</button>
-    </div>
-    <ul id="ex-list" class="kw-list"></ul>
-  </section>
+    <section class="tab-panel" id="tab-chats" hidden>
+      <p class="hint" data-i18n="chatsHint"></p>
+      <ul class="item-list" id="chat-list"></ul>
+    </section>
 
-  <section id="tab-chats" class="tab-panel card" hidden>
-    <p class="hint" data-i18n="chatsHint"></p>
-    <ul id="chat-list" class="kw-list"></ul>
-  </section>
+    <section class="tab-panel" id="tab-auth" hidden>
+      <div id="auth-authorized" hidden>
+        <div class="auth-badge-row">
+          <span class="auth-badge" data-i18n="authorized">Authorized</span>
+          <button class="btn btn-danger" id="auth-reset" data-i18n="resetAuth">Reset</button>
+        </div>
+      </div>
+      <div id="auth-form">
+        <div class="form-field">
+          <label class="field-label" data-i18n="phone">Phone</label>
+          <div class="field-input-wrap">
+            <input class="field-input" id="phone" data-i18n-placeholder="phoneHint" autocomplete="off">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" id="authorize" data-i18n="authorize">Authorize account</button>
+        <div id="auth-prompt" hidden>
+          <div class="form-field">
+            <label class="field-label" id="prompt-label"></label>
+            <div class="field-input-wrap">
+              <input class="field-input" id="prompt-value" autocomplete="off">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" id="prompt-submit" data-i18n="submit">Submit</button>
+        </div>
+        <div id="auth-result" class="hint"></div>
+      </div>
+      <div id="bot-start-block" class="divider" hidden>
+        <button class="btn btn-secondary btn-block" id="bot-start" data-i18n="botStart">Start @KeyPulseMainBot</button>
+      </div>
+    </section>
 
-  <section class="actions">
-    <button id="donate" data-i18n="donate">Отблагодарить</button>
-  </section>
+    <section class="tab-panel" id="tab-settings" hidden>
+      <div class="form-field">
+        <label class="field-label" data-i18n="apiId">Telegram API ID</label>
+        <div class="field-input-wrap">
+          <input class="field-input" id="TG_API_ID" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="field-label" data-i18n="apiHash">Telegram API Hash</label>
+        <div class="field-input-wrap">
+          <input class="field-input" id="TG_API_HASH" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="field-label" data-i18n="relayUrl">Relay URL</label>
+        <div class="field-input-wrap">
+          <input class="field-input" id="RELAY_URL" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="field-label" data-i18n="relayKey">Relay API key</label>
+        <div class="field-input-wrap">
+          <input class="field-input" id="RELAY_API_KEY" type="text" data-i18n-placeholder="relayKeyHint" autocomplete="off">
+        </div>
+      </div>
+      <div class="action-strip">
+        <button class="btn btn-primary" id="save" data-i18n="save">Save</button>
+      </div>
+    </section>
+  </main>
 
-  <div id="status-modal" class="modal" hidden>
+  <div class="modal" id="status-modal" hidden>
     <div class="modal-box">
-      <div class="modal-title" data-i18n="errorDetails">Детали ошибки</div>
-      <div id="status-modal-text" class="modal-text"></div>
-      <button id="status-modal-close" data-i18n="close">Закрыть</button>
+      <div class="modal-title" data-i18n="errorDetails">Error details</div>
+      <div class="modal-text" id="status-modal-text"></div>
+      <button class="btn btn-primary modal-close" id="status-modal-close" data-i18n="close">Close</button>
     </div>
   </div>
 
   <script src="app.js"></script>
 </body>
 </html>
-
-

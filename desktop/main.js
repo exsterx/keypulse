@@ -190,8 +190,8 @@ function updateStatus() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 460,
-    height: 760,
+    width: 920,
+    height: 680,
     title: `Key Pulse v${APP_VERSION}`,
     icon: path.join(__dirname, "assets", "logo.ico"),
     autoHideMenuBar: true,
