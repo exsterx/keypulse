@@ -1,6 +1,6 @@
 {
   "name": "keypulse-desktop",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "productName": "Keypulse",
   "description": "Keypulse — local Telegram keyword monitor (Windows desktop app).",
   "main": "main.js",
