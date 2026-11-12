@@ -30,12 +30,6 @@ const PAIR_BATCH_SIZE = 8;
  */
 const QUERY_PREFIX = "Сообщение на тему: ";
 
-// Dynamic import of an ESM-only package from this CommonJS project. `new
-// Function` keeps the native `import()` so tsc does not rewrite it to require().
-const importEsm = new Function("specifier", "return import(specifier)") as (
-  specifier: string
-) => Promise<unknown>;
-
 interface ProgressInfo {
   status?: string;
   file?: string;
@@ -126,7 +120,11 @@ export class RerankerCore {
     this.state = "loading";
     this.lastError = null;
     try {
-      const mod = (await importEsm("@huggingface/transformers")) as {
+      // @huggingface/transformers ships a Node CommonJS build (its "require"
+      // export condition), so a plain require works in dev and inside the
+      // packaged app. The previous `new Function(...import())` trick could not
+      // resolve the bare specifier from within app.asar (ERR_MODULE_NOT_FOUND).
+      const mod = require("@huggingface/transformers") as {
         AutoTokenizer: {
           from_pretrained: (id: string, opts?: Record<string, unknown>) => Promise<TokenizerLike>;
         };
