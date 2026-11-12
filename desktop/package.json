@@ -1,6 +1,6 @@
 {
   "name": "keypulse-desktop",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "productName": "Keypulse",
   "description": "Keypulse — local Telegram keyword monitor (Windows desktop app).",
   "main": "main.js",
@@ -10,8 +10,10 @@
     "dist": "electron-builder --win"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.0.0",
     "better-sqlite3": "12.4.1",
     "dotenv": "^16.4.5",
+    "onnxruntime-node": "1.21.0",
     "telegraf": "^4.16.3",
     "telegram": "2.26.22",
     "winston": "^3.14.2",

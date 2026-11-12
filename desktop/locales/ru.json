@@ -68,6 +68,23 @@
   "errNoConnection": "Нет соединения с Telegram или релеем",
   "donate": "Отблагодарить",
   "open": "Открыть окно",
-  "quit": "Выход"
+  "quit": "Выход",
+  "tabSemantic": "Семантика",
+  "semanticHint": "Сообщения, подходящие по смыслу к этим описаниям, будут отслеживаться.",
+  "semanticEmpty": "Семантических ключей нет",
+  "semanticPlaceholder": "описание темы",
+  "semanticStatus": "Модель",
+  "semanticModelReady": "готова",
+  "semanticModelLoading": "загрузка",
+  "semanticModelError": "ошибка",
+  "semanticModelUnloaded": "не загружена",
+  "semanticSensitivity": "Семантическая чувствительность",
+  "semanticMinLength": "Мин. длина сообщения для семантики (символов)",
+  "semanticSensitive": "Чувствительный",
+  "semanticBalanced": "Сбалансированный",
+  "semanticStrict": "Строгий",
+  "semanticAdded": "Семантический ключ добавлен",
+  "semanticExists": "Семантический ключ уже существует",
+  "semanticError": "Ошибка семантики"
 }
 

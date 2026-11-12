@@ -13,12 +13,13 @@
     "install:native": "node scripts/fetch-native.cjs",
     "desktop:build": "npm run build && node scripts/copy-dist-desktop.cjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/matcher.test.ts tests/dedupe.test.ts"
+    "test": "node --import tsx --test tests/matcher.test.ts tests/dedupe.test.ts tests/semantic.test.ts tests/backfill.test.ts tests/scanArgs.test.ts"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.0.0",
     "better-sqlite3": "12.4.1",
     "dotenv": "^16.4.5",
     "telegraf": "^4.16.3",

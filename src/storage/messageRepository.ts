@@ -29,6 +29,8 @@ export class MessageRepository {
   private readonly markNotifiedStmt: Database.Statement;
   private readonly getBetweenStmt: Database.Statement;
   private readonly totalStmt: Database.Statement;
+  private readonly clearProcessedStmt: Database.Statement;
+  private readonly clearProcessedAllStmt: Database.Statement;
 
   constructor(private readonly db: Database.Database) {
     this.isProcessedStmt = db.prepare(
@@ -54,6 +56,8 @@ export class MessageRepository {
        ORDER BY m.detected_at ASC`
     );
     this.totalStmt = db.prepare(`SELECT COUNT(*) AS c FROM messages`);
+    this.clearProcessedStmt = db.prepare(`DELETE FROM processed_messages WHERE chat_id = ?`);
+    this.clearProcessedAllStmt = db.prepare(`DELETE FROM processed_messages`);
   }
 
   isProcessed(chatId: number, messageId: number): boolean {
@@ -62,6 +66,21 @@ export class MessageRepository {
 
   markProcessed(chatId: number, messageId: number, matched: boolean): void {
     this.markProcessedStmt.run(chatId, messageId, Math.floor(Date.now() / 1000), matched ? 1 : 0);
+  }
+
+  /**
+   * Forgets the "already processed" markers so a forced rescan re-evaluates the
+   * stored history against the current keyword/semantic sets. Returns the number
+   * of cleared rows.
+   *
+   * Safe to call at any time: matches are still de-duplicated by the
+   * UNIQUE(chat_id, message_id) index on `messages`, so nothing is stored or
+   * notified twice. Omit `chatId` to forget markers for every chat.
+   */
+  clearProcessed(chatId?: number): number {
+    const result =
+      chatId === undefined ? this.clearProcessedAllStmt.run() : this.clearProcessedStmt.run(chatId);
+    return result.changes;
   }
 
   /** Returns the inserted row id, or 0 if it was a duplicate. */

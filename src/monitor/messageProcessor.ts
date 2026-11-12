@@ -4,6 +4,7 @@ import { ChatRepository, type ChatType, type ChatUpsertInput } from "../storage/
 import { MessageRepository } from "../storage/messageRepository";
 import { KeywordMatcher } from "../matcher/matcher";
 import type { Notifier } from "../notifications/notifier";
+import type { SemanticMatcher } from "../semantic/semanticMatcher";
 import { buildMessageLink } from "../utils/text";
 import { toNumber } from "../utils/misc";
 
@@ -12,6 +13,7 @@ export interface ProcessorDeps {
   messageRepo: MessageRepository;
   matcher: KeywordMatcher;
   notifier: Notifier;
+  semanticMatcher: SemanticMatcher;
   logger: Logger;
 }
 
@@ -38,6 +40,14 @@ function extractChatInfo(msg: Api.Message): ChatUpsertInput {
   };
 }
 
+export interface ProcessOptions {
+  /**
+   * Semantic (cross-encoder) matching costs ~16–20 ms per (message, key) pair,
+   * so bulk history scans only enable it when explicitly asked (`/scan deep`).
+   */
+  semantic?: boolean;
+}
+
 /**
  * Shared by the live handler and the history backfiller. Extracts text,
  * matches keywords, de-duplicates and enqueues notifications.
@@ -45,7 +55,7 @@ function extractChatInfo(msg: Api.Message): ChatUpsertInput {
 export class MessageProcessor {
   constructor(private readonly deps: ProcessorDeps) {}
 
-  async process(msg: Api.Message): Promise<void> {
+  async process(msg: Api.Message, options: ProcessOptions = {}): Promise<void> {
     const raw = msg as unknown as Record<string, unknown>;
     const chatId = toNumber(raw.chatId);
     const messageId = toNumber(raw.id);
@@ -68,7 +78,20 @@ export class MessageProcessor {
 
     this.deps.messageRepo.markProcessed(chatId, messageId, isMatch);
 
-    if (!isMatch) return;
+    if (!isMatch) {
+      // No keyword match — hand off to semantic matching (runs in the background).
+      if (options.semantic !== false && text.trim().length > 0) {
+        this.deps.semanticMatcher.enqueue({
+          chatId,
+          messageId,
+          messageDate: toNumber(raw.date) || null,
+          text,
+          chatTitle: chat.title,
+          link: buildMessageLink(chat, messageId),
+        });
+      }
+      return;
+    }
 
     const link = buildMessageLink(chat, messageId);
     const rowId = this.deps.messageRepo.addMatch({

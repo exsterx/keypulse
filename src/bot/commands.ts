@@ -5,10 +5,11 @@ import type { MessageRepository } from "../storage/messageRepository";
 import type { SettingsRepository } from "../storage/settingsRepository";
 import type { KeywordManager } from "../matcher/keywordManager";
 import type { KeywordMatcher } from "../matcher/matcher";
+import type { SemanticKeyManager } from "../semantic/semanticKeyManager";
 import type { TelegramAccount } from "../telegram/client";
 import type { Monitor } from "../monitor/monitor";
 import type { DigestService } from "../digest/digest";
-import { parseDurationSeconds } from "../utils/misc";
+import { parseDurationSeconds, parseScanArgs } from "../utils/misc";
 import { unixSeconds } from "../utils/dates";
 import { t, helpText } from "../utils/i18n";
 
@@ -23,12 +24,24 @@ export interface CommandServices {
   account: TelegramAccount;
   digest: DigestService;
   matcher: KeywordMatcher;
+  semanticKeys: SemanticKeyManager;
 }
 
 export interface CommandResult {
   text?: string;
   callbackAnswer?: string;
   parseMode?: "HTML";
+}
+
+function parseKeyArgs(args: string): { type: "keyword" | "semantic"; value: string } {
+  const trimmed = args.trim();
+  if (/^semantic\s+/i.test(trimmed)) {
+    return { type: "semantic", value: trimmed.replace(/^semantic\s+/i, "").trim() };
+  }
+  if (/^key\s+/i.test(trimmed)) {
+    return { type: "keyword", value: trimmed.replace(/^key\s+/i, "").trim() };
+  }
+  return { type: "keyword", value: trimmed };
 }
 
 export class CommandService {
@@ -47,6 +60,8 @@ export class CommandService {
     const active = keywords.filter((k) => k.enabled).length;
     const state = this.s.monitor.isPaused() ? this.t("status.paused") : this.t("status.active");
     const account = this.s.account.isConnected() ? this.t("status.connected") : this.t("status.disconnected");
+    const semantics = this.s.semanticKeys.list();
+    const semanticActive = semantics.filter((k) => k.enabled).length;
     return {
       text: [
         this.t("status.state", { state }),
@@ -57,6 +72,7 @@ export class CommandService {
         this.t("status.monitoredChats", { n: this.s.chatRepo.getMonitored().length }),
         this.t("status.excludedChats", { n: this.s.chatRepo.getExcluded().length }),
         this.t("status.keywords", { active, total: keywords.length }),
+        this.t("status.semantic", { active: semanticActive, total: semantics.length }),
         this.t("status.totalMatches", { n: this.s.messageRepo.total() }),
       ].join("\n"),
     };
@@ -72,14 +88,27 @@ export class CommandService {
 
   keywords(): CommandResult {
     const keywords = this.s.keywordManager.list();
+    const semantics = this.s.semanticKeys.list();
+    const lines: string[] = [];
     if (keywords.length === 0) {
-      return { text: this.t("keywords.empty") };
+      lines.push(this.t("keywords.empty"));
+    } else {
+      lines.push(
+        keywords
+          .map((k) => (k.enabled ? `• ${k.phrase}` : `• ${k.phrase} (${this.t("keywords.disabled")})`))
+          .join("\n")
+      );
     }
-    return {
-      text: keywords
-        .map((k) => (k.enabled ? `• ${k.phrase}` : `• ${k.phrase} (${this.t("keywords.disabled")})`))
-        .join("\n"),
-    };
+    if (semantics.length > 0) {
+      lines.push("");
+      lines.push(this.t("semantic.title"));
+      lines.push(
+        semantics
+          .map((s) => (s.enabled ? `🧠 ${s.description}` : `🧠 ${s.description} (${this.t("keywords.disabled")})`))
+          .join("\n")
+      );
+    }
+    return { text: lines.join("\n") };
   }
 
   addKeyword(args: string): CommandResult {
@@ -94,6 +123,34 @@ export class CommandService {
     if (!phrase) return { text: this.t("kw.removeUsage") };
     if (this.s.keywordManager.remove(phrase)) return { text: this.t("kw.removed", { phrase }) };
     return { text: this.t("kw.notFound", { phrase }) };
+  }
+
+  add(args: string): Promise<CommandResult> {
+    const parsed = parseKeyArgs(args);
+    return parsed.type === "semantic" ? this.addSemantic(parsed.value) : Promise.resolve(this.addKeyword(parsed.value));
+  }
+
+  remove(args: string): CommandResult {
+    const parsed = parseKeyArgs(args);
+    return parsed.type === "semantic" ? this.removeSemantic(parsed.value) : this.removeKeyword(parsed.value);
+  }
+
+  async addSemantic(args: string): Promise<CommandResult> {
+    const description = args.trim();
+    if (!description) return { text: this.t("semantic.addUsage") };
+    const result = await this.s.semanticKeys.add(description, this.s.config.semanticDefaultThreshold);
+    if (result.ok) return { text: this.t("semantic.added", { description }) };
+    if (result.exists) return { text: this.t("semantic.exists", { description }) };
+    return { text: this.t("semantic.error", { error: result.error ?? "" }) };
+  }
+
+  removeSemantic(args: string): CommandResult {
+    const description = args.trim();
+    if (!description) return { text: this.t("semantic.removeUsage") };
+    if (this.s.semanticKeys.removeByDescription(description)) {
+      return { text: this.t("semantic.removed", { description }) };
+    }
+    return { text: this.t("semantic.notFound", { description }) };
   }
 
   enableKeyword(args: string): CommandResult {
@@ -148,12 +205,18 @@ export class CommandService {
     if (this.s.monitor.backfiller.isRunning()) {
       return { text: this.t("scan.running") };
     }
-    const seconds = parseDurationSeconds(args || undefined, this.s.config.backfillDays);
+    const { duration, deep } = parseScanArgs(args);
+    const seconds = parseDurationSeconds(duration || undefined, this.s.config.backfillDays);
     const days = Math.max(1, Math.round(seconds / 86400));
+    // Semantic matching stays opt-in via `deep`: on CPU the cross-encoder is
+    // ~270 ms per (message, key) pair, so an implicit deep pass would take hours.
+    const semantic = deep;
     void this.s.monitor.backfiller
-      .scanAll(seconds, this.s.config.backfillLimit, true)
+      .scanAll(seconds, this.s.config.backfillLimit, true, { semantic })
       .catch((error) => this.s.logger.error(`Scan failed: ${String(error)}`));
-    return { text: this.t("scan.start", { days }) };
+    const head = this.t(semantic ? "scan.startSemantic" : "scan.startKeywords", { days });
+    const hint = semantic ? "" : this.t("scan.deepHint");
+    return { text: hint ? `${head}\n${hint}` : head };
   }
 
   exclude(): CommandResult {

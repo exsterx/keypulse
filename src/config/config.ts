@@ -27,6 +27,8 @@ export interface AppConfig {
   backfillDays: number;
   backfillLimit: number;
   backfillMinIntervalSeconds: number;
+  /** Score history with the cross-encoder during the startup backfill ("deep" scan). */
+  backfillSemantic: boolean;
 
   searchMode: SearchMode;
   notificationMode: NotificationMode;
@@ -37,6 +39,10 @@ export interface AppConfig {
   relayApiKey: string;
 
   language: Lang;
+
+  semanticDefaultThreshold: number;
+  /** Messages shorter than this (chars) are never scored by the cross-encoder. */
+  semanticMinTextLength: number;
 
   logLevel: string;
 }
@@ -79,6 +85,22 @@ function parsePositiveInt(value: string | undefined, name: string): number {
 function pickEnum<T extends string>(value: string | undefined, allowed: readonly T[], fallback: T): T {
   if (value && (allowed as readonly string[]).includes(value)) return value as T;
   return fallback;
+}
+
+/**
+ * The embedding matcher used centred-cosine thresholds (0.35 / 0.40 / 0.50);
+ * the reranker scores live on a different scale (0.02 / 0.05 / 0.15). Legacy
+ * values are mapped to the matching preset so an old config keeps working
+ * instead of silently turning semantic matching off.
+ */
+function parseThreshold(value: string | undefined): number {
+  const n = parseFloat(value ?? "0.05");
+  if (!Number.isFinite(n)) return 0.05;
+  const clamped = Math.min(1, Math.max(0, n));
+  if (clamped >= 0.45) return 0.15;
+  if (clamped >= 0.37) return 0.05;
+  if (clamped >= 0.3) return 0.02;
+  return clamped;
 }
 
 export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppConfig {
@@ -125,6 +147,8 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
     backfillDays: parseInt(env.BACKFILL_DAYS ?? "7", 10) || 7,
     backfillLimit: parseInt(env.BACKFILL_LIMIT ?? "500", 10) || 500,
     backfillMinIntervalSeconds: parseInt(env.BACKFILL_MIN_INTERVAL_SECONDS ?? "600", 10) || 600,
+    // Opt-in: scoring history by meaning is minutes of CPU for a week of chats.
+    backfillSemantic: (env.BACKFILL_SEMANTIC ?? "").trim().toLowerCase() === "true",
 
     searchMode,
     notificationMode,
@@ -135,6 +159,9 @@ export function loadConfigFromObject(env: ConfigSource, rootDir: string): AppCon
     relayApiKey,
 
     language: pickEnum<Lang>(env.LANGUAGE, ["en", "ru"], "en"),
+
+    semanticDefaultThreshold: parseThreshold(env.SEMANTIC_THRESHOLD),
+    semanticMinTextLength: parseInt(env.SEMANTIC_MIN_TEXT_LENGTH ?? "10", 10) || 10,
 
     logLevel: env.LOG_LEVEL || "info",
   };

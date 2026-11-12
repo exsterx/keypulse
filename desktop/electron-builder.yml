@@ -10,10 +10,21 @@ files:
   - locales/**/*
   - assets/**/*
   - dist/**/*
+  # onnxruntime-node bundles every platform; the app only ships Windows builds.
+  - "!**/node_modules/onnxruntime-node/bin/napi-v3/{darwin,linux}/**"
+  # Browser-only ONNX runtime and the sharp image stack are never used by the
+  # reranker (text only), but npm installs them as deps of @huggingface/transformers.
+  - "!**/node_modules/onnxruntime-web/**"
+  - "!**/node_modules/sharp/**"
+  - "!**/node_modules/@img/**"
 
 npmRebuild: false
 asarUnpack:
+  # Native ONNX runtime: onnxruntime.dll is dlopen'ed, so it cannot live in asar.
   - "**/*.node"
+  - "**/node_modules/onnxruntime-node/**"
+  # ESM build; unpacking keeps native import() off the asar path.
+  - "**/node_modules/@huggingface/**"
 
 win:
   icon: assets/logo.ico

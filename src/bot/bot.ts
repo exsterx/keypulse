@@ -6,17 +6,19 @@ import type { MessageRepository } from "../storage/messageRepository";
 import type { SettingsRepository } from "../storage/settingsRepository";
 import type { KeywordManager } from "../matcher/keywordManager";
 import type { KeywordMatcher } from "../matcher/matcher";
+import type { SemanticKeyManager } from "../semantic/semanticKeyManager";
 import type { TelegramAccount } from "../telegram/client";
 import type { Monitor } from "../monitor/monitor";
 import type { DigestService } from "../digest/digest";
 import { splitMessage, truncate } from "../utils/text";
 import { unixSeconds } from "../utils/dates";
-import { parseDurationSeconds, errMsg } from "../utils/misc";
+import { parseDurationSeconds, parseScanArgs, errMsg } from "../utils/misc";
 
 export interface BotServices {
   config: AppConfig;
   logger: Logger;
   keywordManager: KeywordManager;
+  semanticKeys: SemanticKeyManager;
   chatRepo: ChatRepository;
   messageRepo: MessageRepository;
   settingsRepo: SettingsRepository;
@@ -37,6 +39,9 @@ async function replyInChunks(ctx: Context, text: string): Promise<void> {
   }
 }
 
+/** Minimum gap between progress replies during a long history scan. */
+const PROGRESS_REPLY_INTERVAL_MS = 90 * 1000;
+
 const HELP_TEXT = [
   "Команды управления:",
   "/start — приветствие",
@@ -52,14 +57,15 @@ const HELP_TEXT = [
   "/resume — возобновить мониторинг",
   "/stats — статистика совпадений",
   "/digest — сводка за последние сутки",
-  "/scan 7d — сканировать историю (7d, 24h, 30d…)",
+  "/scan 7d — пересканировать историю за период (7d, 24h, 30d…), только по ключевым словам",
+  "/scan 7d deep — то же + проверка по смыслу (долго, минуты–часы)",
   "/exclude — список исключённых чатов",
   "/exclude_chat ID — исключить чат",
   "/include_chat ID — вернуть чат в мониторинг",
 ].join("\n");
 
 export function registerBotHandlers(bot: Telegraf, services: BotServices): void {
-  const { config, logger, keywordManager, chatRepo, messageRepo, monitor, account, digest, matcher } = services;
+  const { config, logger, keywordManager, semanticKeys, chatRepo, messageRepo, monitor, account, digest, matcher } = services;
 
   // Owner-only guard: reject anyone whose Telegram user id is not configured.
   bot.use(async (ctx, next) => {
@@ -89,6 +95,8 @@ export function registerBotHandlers(bot: Telegraf, services: BotServices): void 
   bot.command("status", async (ctx) => {
     const keywords = keywordManager.list();
     const activeKeywords = keywords.filter((k) => k.enabled).length;
+    const semantics = semanticKeys.list();
+    const semanticActive = semantics.filter((k) => k.enabled).length;
     const lines = [
       `Состояние: ${monitor.isPaused() ? "⏸ приостановлен" : "▶ активен"}`,
       `Аккаунт Telegram: ${account.isConnected() ? "✅ подключён" : "❌ не подключён"}`,
@@ -98,6 +106,7 @@ export function registerBotHandlers(bot: Telegraf, services: BotServices): void 
       `Отслеживается чатов: ${chatRepo.getMonitored().length}`,
       `Исключено чатов: ${chatRepo.getExcluded().length}`,
       `Ключевых слов: ${activeKeywords} активных из ${keywords.length}`,
+      `Семантических тем: ${semanticActive} активных из ${semantics.length}`,
       `Совпадений всего: ${messageRepo.total()}`,
     ];
     await ctx.reply(lines.join("\n"));
@@ -239,21 +248,59 @@ export function registerBotHandlers(bot: Telegraf, services: BotServices): void 
   });
 
   bot.command("scan", async (ctx) => {
-    const arg = argAfter(ctx) || undefined;
-    const seconds = parseDurationSeconds(arg, config.backfillDays);
+    const { duration, deep } = parseScanArgs(argAfter(ctx));
+    const seconds = parseDurationSeconds(duration || undefined, config.backfillDays);
     const days = Math.max(1, Math.round(seconds / 86400));
+    // History matching stays keyword-only unless `deep` is passed: the
+    // cross-encoder costs ~270 ms per (message, key) pair on CPU, so a week of
+    // history across many chats would take hours. The explicit flag keeps that
+    // cost opt-in.
+    const semantic = deep;
+    let lastProgressAt = Date.now();
 
     if (monitor.backfiller.isRunning()) {
       await ctx.reply("⏳ Сканирование уже выполняется.");
       return;
     }
-    await ctx.reply(`🚀 Запускаю сканирование истории за последние ${days} дн…`);
+    await ctx.reply(
+      semantic
+        ? `🚀 Запускаю сканирование истории за последние ${days} дн с проверкой по смыслу. Это может занять очень долго (минуты–часы), прогресс будет приходить сюда…`
+        : `🚀 Запускаю сканирование истории за последние ${days} дн по ключевым словам…`
+    );
 
     void monitor.backfiller
-      .scanAll(seconds, config.backfillLimit, true)
+      .scanAll(seconds, config.backfillLimit, true, {
+        semantic,
+        onProgress: (progress) => {
+          // Rare updates only: a deep scan runs for many minutes and silence
+          // looks like a hang, but a message per chat would flood the chat.
+          const now = Date.now();
+          if (now - lastProgressAt < PROGRESS_REPLY_INTERVAL_MS) return;
+          lastProgressAt = now;
+          void ctx
+            .reply(
+              `⏳ Сканирование: ${progress.chatsDone}/${progress.chatsTotal} чатов, ${progress.messages} сообщений (сейчас: ${truncate(progress.chatTitle, 40)}).`
+            )
+            .catch(() => undefined);
+        },
+      })
       .then((summary) => {
+        const mode = summary.semantic
+          ? ", семантика включена."
+          : semantic
+            ? ", семантика недоступна."
+            : ", только ключевые слова.";
+        const notice = semantic
+          ? summary.semantic
+            ? ""
+            : "\n⚠️ Семантика не запустилась: модель ещё загружается или нет семантических ключей — история проверена только по ключевым словам."
+          : "\n💡 История проверена только по ключевым словам. Для поиска по смыслу запустите /scan с флагом deep.";
+        const skipped =
+          summary.skippedChats > 0
+            ? `\n⚠️ Пропущено чатов (Telegram не отдал доступ к ним): ${summary.skippedChats}.`
+            : "";
         void ctx.reply(
-          `✅ Сканирование завершено: ${summary.chatsScanned} чатов, ${summary.totalMessages} сообщений.`
+          `✅ Сканирование завершено: ${summary.chatsScanned} чатов, ${summary.totalMessages} сообщений${mode}${notice}${skipped}`
         );
       })
       .catch((error) => {

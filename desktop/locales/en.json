@@ -68,6 +68,23 @@
   "errNoConnection": "No connection to Telegram or relay",
   "donate": "Support the project",
   "open": "Open window",
-  "quit": "Quit"
+  "quit": "Quit",
+  "tabSemantic": "Semantic",
+  "semanticHint": "Messages matching these topic descriptions will be tracked by meaning.",
+  "semanticEmpty": "No semantic keys yet",
+  "semanticPlaceholder": "topic description",
+  "semanticStatus": "Model",
+  "semanticModelReady": "ready",
+  "semanticModelLoading": "loading",
+  "semanticModelError": "error",
+  "semanticModelUnloaded": "not loaded",
+  "semanticSensitivity": "Semantic sensitivity",
+  "semanticMinLength": "Min message length for semantic matching (chars)",
+  "semanticSensitive": "Sensitive",
+  "semanticBalanced": "Balanced",
+  "semanticStrict": "Strict",
+  "semanticAdded": "Semantic key added",
+  "semanticExists": "Semantic key already exists",
+  "semanticError": "Semantic error"
 }
 

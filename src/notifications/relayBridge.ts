@@ -56,7 +56,9 @@ export class RelayBridge {
       ws.send(JSON.stringify({ type: "hello", api_key: this.apiKey, chat_id: this.chatId, lang: this.language }));
     });
 
-    ws.on("message", (data) => this.handleMessage(data.toString()));
+    ws.on("message", (data) => {
+      void this.handleMessage(data.toString());
+    });
 
     ws.on("pong", () => {
       this.alive = true;
@@ -103,7 +105,7 @@ export class RelayBridge {
     }
   }
 
-  private handleMessage(raw: string): void {
+  private async handleMessage(raw: string): Promise<void> {
     let msg: RequestMessage;
     try {
       msg = JSON.parse(raw);
@@ -117,7 +119,7 @@ export class RelayBridge {
       result =
         msg.kind === "callback"
           ? this.commands.handleCallback(String(msg.data ?? ""))
-          : this.runCommand(String(msg.cmd ?? ""), String(msg.args ?? ""));
+          : await this.runCommand(String(msg.cmd ?? ""), String(msg.args ?? ""));
     } catch (error) {
       result = { text: t(this.language, "bridge.error", { error: errMsg(error) }) };
     }
@@ -133,7 +135,7 @@ export class RelayBridge {
     );
   }
 
-  private runCommand(cmd: string, args: string): CommandResult {
+  private async runCommand(cmd: string, args: string): Promise<CommandResult> {
     switch (cmd) {
       case "help":
         return this.commands.help();
@@ -144,9 +146,9 @@ export class RelayBridge {
       case "keywords":
         return this.commands.keywords();
       case "add":
-        return this.commands.addKeyword(args);
+        return this.commands.add(args);
       case "remove":
-        return this.commands.removeKeyword(args);
+        return this.commands.remove(args);
       case "enable":
         return this.commands.enableKeyword(args);
       case "disable":

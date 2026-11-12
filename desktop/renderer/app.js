@@ -32,7 +32,11 @@ function setLang(lang) {
 
 function renderStatus(status) {
   const badge = $("status-badge");
-  const color = status && status.color === "green" ? "running" : status && status.color === "yellow" ? "connecting" : "error";
+  const color =
+    status && status.state === "running" ? "running"
+    : status && status.state === "paused" ? "paused"
+    : status && status.state === "connecting" ? "connecting"
+    : "error";
   badge.className = "status-badge " + color;
   badge.textContent = t(status && status.label ? status.label : "noConnection");
   lastStatusState = status && status.state ? status.state : null;
@@ -74,6 +78,9 @@ async function refresh() {
   $("TG_API_HASH").value = c.TG_API_HASH || "";
   $("RELAY_URL").value = c.RELAY_URL || "";
   $("RELAY_API_KEY").value = c.RELAY_API_KEY || "";
+  $("SEMANTIC_THRESHOLD").value = c.SEMANTIC_THRESHOLD || "0.40";
+  $("sem-threshold").value = c.SEMANTIC_THRESHOLD || "0.40";
+  $("SEMANTIC_MIN_TEXT_LENGTH").value = c.SEMANTIC_MIN_TEXT_LENGTH || "10";
 
   const authorized = !!state.authorized;
   $("auth-form").hidden = authorized;
@@ -81,6 +88,9 @@ async function refresh() {
   $("bot-start-block").hidden = !authorized;
 
   renderStatus(state.status);
+  // Load the semantic topic list right away — it comes from the DB and must
+  // not wait for the user to open the tab (or for a scan to finish).
+  void renderSemantic();
 }
 
 function collectConfig() {
@@ -90,6 +100,8 @@ function collectConfig() {
     RELAY_URL: $("RELAY_URL").value.trim(),
     RELAY_API_KEY: $("RELAY_API_KEY").value.trim(),
     LANGUAGE: $("lang").value,
+    SEMANTIC_THRESHOLD: $("SEMANTIC_THRESHOLD").value,
+    SEMANTIC_MIN_TEXT_LENGTH: $("SEMANTIC_MIN_TEXT_LENGTH").value,
   };
 }
 
@@ -109,6 +121,7 @@ function switchTab(name) {
   document.querySelectorAll(".tab-panel").forEach((p) => (p.hidden = p.id !== "tab-" + name));
   if (name === "chats") void renderChats();
   if (name === "keywords") void renderKeywords();
+  if (name === "semantic") void renderSemantic();
 }
 
 document.querySelectorAll(".nav-item").forEach((b) => {
@@ -315,7 +328,99 @@ async function renderChats() {
   } catch (_) {}
 }
 
-window.keypulse.onStatus((status) => renderStatus(status));
+// ---- Semantic keys ----
+function semanticStatusLabel(status) {
+  const key =
+    status === "ready" ? "semanticModelReady"
+    : status === "loading" ? "semanticModelLoading"
+    : status === "error" ? "semanticModelError"
+    : "semanticModelUnloaded";
+  return t(key);
+}
+
+function semanticItem(k) {
+  const li = document.createElement("li");
+  li.className = "item" + (k.enabled ? "" : " off");
+
+  const span = document.createElement("span");
+  span.className = "item-phrase";
+  span.textContent = "🧠 " + k.description + " · " + k.threshold;
+  li.appendChild(span);
+
+  const toggleBtn = document.createElement("button");
+  toggleBtn.className = "item-btn";
+  toggleBtn.textContent = k.enabled ? "✓" : "○";
+  toggleBtn.title = k.enabled ? t("disable") : t("enable");
+  toggleBtn.addEventListener("click", async () => {
+    await window.keypulse.toggleSemanticKey(k.id, !k.enabled);
+    await renderSemantic();
+  });
+  li.appendChild(toggleBtn);
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "item-btn danger";
+  delBtn.textContent = "✕";
+  delBtn.title = t("delete");
+  delBtn.addEventListener("click", async () => {
+    await window.keypulse.removeSemanticKey(k.id);
+    await renderSemantic();
+  });
+  li.appendChild(delBtn);
+
+  return li;
+}
+
+async function renderSemantic() {
+  try {
+    const data = await window.keypulse.listSemanticKeys();
+    $("semantic-status").textContent = t("semanticStatus") + ": " + semanticStatusLabel(data.status);
+    const listEl = $("sem-list");
+    listEl.innerHTML = "";
+    const keys = data.keys || [];
+    if (!keys.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = t("semanticEmpty");
+      listEl.appendChild(li);
+      return;
+    }
+    for (const k of keys) listEl.appendChild(semanticItem(k));
+  } catch (_) {}
+}
+
+$("sem-add").onclick = async () => {
+  const input = $("sem-input");
+  const desc = input.value.trim();
+  if (!desc) return;
+  const threshold = Number($("sem-threshold").value) || 0.40;
+  const res = await window.keypulse.addSemanticKey(desc, threshold);
+  if (res && res.ok) {
+    input.value = "";
+    appendLogColor(t("semanticAdded"), "log-ok");
+  } else if (res && res.exists) {
+    appendLogColor(t("semanticExists"), "log-error");
+  } else {
+    appendLogColor(t("semanticError") + (res && res.error ? ": " + res.error : ""), "log-error");
+  }
+  await renderSemantic();
+};
+
+$("sem-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("sem-add").click(); });
+
+window.keypulse.onStatus((status) => {
+  const prev = lastStatusState;
+  renderStatus(status);
+  // When the engine finishes starting (connecting → running/paused) the
+  // semantic topic list becomes available; refresh it without a tab switch.
+  if (
+    status &&
+    (status.state === "running" || status.state === "paused") &&
+    prev !== status.state
+  ) {
+    void renderSemantic();
+    void renderChats();
+  }
+});
 
 function appendLogSpan(line, className) {
   const out = $("log-output");
@@ -351,5 +456,3 @@ if (window.keypulse.appVersion) {
 }
 
 refresh();
-
-

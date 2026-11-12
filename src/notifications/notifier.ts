@@ -16,13 +16,14 @@ export interface Notification {
   matchedKeywords: string[];
   text: string;
   link: string | null;
+  kind?: "keyword" | "semantic";
 }
 
 function formatNotification(n: Notification, timezone: string, lang: "en" | "ru"): string {
   const lines: string[] = [];
   lines.push(`🔔 <b>${escapeHtml(n.chatTitle)}</b>`);
   lines.push(`🕒 ${formatDate(n.messageDate, timezone, lang)}`);
-  lines.push(`🔑 ${escapeHtml(n.matchedKeywords.join(", "))}`);
+  lines.push(`${n.kind === "semantic" ? "🧠" : "🔑"} ${escapeHtml(n.matchedKeywords.join(", "))}`);
   if (n.link) lines.push(`🔗 ${escapeHtml(n.link)}`);
   lines.push("");
   lines.push(highlightKeywords(n.text, n.matchedKeywords));

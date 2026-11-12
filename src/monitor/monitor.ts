@@ -67,14 +67,17 @@ export class Monitor {
         );
       } else {
         this.deps.logger.info("Starting history backfill...");
-        try {
-          await this.deps.backfiller.scanAll(
+        // Run in the background so startup (and the desktop UI, which shows the
+        // semantic topics once the engine handle exists) is not blocked by a
+        // multi-minute scan.
+        void this.deps.backfiller
+          .scanAll(
             this.deps.config.backfillDays * 86400,
-            this.deps.config.backfillLimit
-          );
-        } catch (error) {
-          this.deps.logger.error(`Backfill failed: ${errMsg(error)}`);
-        }
+            this.deps.config.backfillLimit,
+            false,
+            { semantic: this.deps.config.backfillSemantic }
+          )
+          .catch((error) => this.deps.logger.error(`Backfill failed: ${errMsg(error)}`));
       }
     }
 

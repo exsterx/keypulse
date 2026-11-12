@@ -39,6 +39,24 @@ test("processed-message tracking prevents reprocessing after a restart", () => {
   assert.equal(messages.isProcessed(chatId, 2), false);
 });
 
+test("clearing processed markers is scoped to the requested chat", () => {
+  const { messages } = createMemoryRepo();
+  const chatA = -1001234567890;
+  const chatB = -1009876543210;
+
+  messages.markProcessed(chatA, 1, false);
+  messages.markProcessed(chatA, 2, true);
+  messages.markProcessed(chatB, 3, false);
+
+  assert.equal(messages.clearProcessed(chatA), 2, "only chat A markers are removed");
+  assert.equal(messages.isProcessed(chatA, 1), false);
+  assert.equal(messages.isProcessed(chatA, 2), false);
+  assert.equal(messages.isProcessed(chatB, 3), true, "other chats keep their markers");
+
+  assert.equal(messages.clearProcessed(), 1, "omitting the chat id clears everything");
+  assert.equal(messages.isProcessed(chatB, 3), false);
+});
+
 test("chat monitoring can be toggled (include/exclude)", () => {
   const { chats } = createMemoryRepo();
   const chat = chats.upsert({

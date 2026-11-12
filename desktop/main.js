@@ -23,6 +23,8 @@ const DEFAULTS = {
   DIGEST_TIME: "09:00",
   LOG_LEVEL: "info",
   LANGUAGE: "en",
+  SEMANTIC_THRESHOLD: "0.05",
+  SEMANTIC_MIN_TEXT_LENGTH: "10",
 };
 
 let mainWindow = null;
@@ -40,10 +42,29 @@ const userDataDir = app.getPath("userData");
 const configPath = path.join(userDataDir, "config.json");
 const distDir = path.join(__dirname, "dist");
 
+/**
+ * Pre-reranker builds stored cosine-scale presets (0.35 / 0.40 / 0.50) in
+ * config.json; remap them to the reranker presets so an upgraded install keeps
+ * matching with a sensible sensitivity.
+ */
+function migrateSemanticThreshold(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULTS.SEMANTIC_THRESHOLD;
+  if (n >= 0.45) return "0.15";
+  if (n >= 0.37) return "0.05";
+  if (n >= 0.3) return "0.02";
+  return String(value);
+}
+
 function loadConfigFile() {
   try {
     if (fs.existsSync(configPath)) {
       config = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(configPath, "utf8")) };
+      const migrated = migrateSemanticThreshold(config.SEMANTIC_THRESHOLD);
+      if (migrated !== config.SEMANTIC_THRESHOLD) {
+        config.SEMANTIC_THRESHOLD = migrated;
+        saveConfigFile();
+      }
     } else {
       saveConfigFile();
     }
@@ -93,6 +114,9 @@ function missingFieldsMessage() {
 }
 
 async function startEngine() {
+  if (starting) {
+    return { ok: false, error: "Engine is already starting." };
+  }
   if (!configIsValid()) {
     lastEngineError = missingFieldsMessage();
     return { ok: false, error: lastEngineError };
@@ -301,6 +325,7 @@ ipcMain.handle("get-state", () => ({
   valid: configIsValid(),
   authorized: sessionExists(),
   status: statusInfo(),
+  semanticStatus: engine ? engine.getSemanticStatus() : "unloaded",
 }));
 
 ipcMain.handle("save-config", (_e, newConfig) => {
@@ -345,6 +370,54 @@ ipcMain.handle("bot:sendStart", async () => {
   } catch (e) {
     return { ok: false, error: e && e.message ? e.message : String(e) };
   }
+});
+
+// ---- Semantic keys ----
+function semanticThreshold(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0.05;
+}
+
+ipcMain.handle("semantic:list", () => {
+  if (!engine) return { keys: [], status: "unloaded" };
+  try {
+    return { keys: engine.listSemanticKeys(), status: engine.getSemanticStatus() };
+  } catch (_) {
+    return { keys: [], status: "unloaded" };
+  }
+});
+
+ipcMain.handle("semantic:add", async (_e, description, threshold) => {
+  if (!engine) return { ok: false, error: "engine not running" };
+  try {
+    return await engine.addSemanticKey(String(description || ""), semanticThreshold(threshold));
+  } catch (e) {
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+});
+
+ipcMain.handle("semantic:update", async (_e, id, description, threshold) => {
+  if (!engine) return { ok: false, error: "engine not running" };
+  try {
+    return await engine.updateSemanticKey(Number(id), String(description || ""), semanticThreshold(threshold));
+  } catch (e) {
+    return { ok: false, error: e && e.message ? e.message : String(e) };
+  }
+});
+
+ipcMain.handle("semantic:remove", (_e, id) => {
+  if (!engine) return { ok: false, error: "engine not running" };
+  return { ok: engine.removeSemanticKey(Number(id)) };
+});
+
+ipcMain.handle("semantic:toggle", (_e, id, enabled) => {
+  if (!engine) return { ok: false, error: "engine not running" };
+  return { ok: engine.setSemanticEnabled(Number(id), !!enabled) };
+});
+
+ipcMain.handle("semantic:setThreshold", (_e, id, threshold) => {
+  if (!engine) return { ok: false, error: "engine not running" };
+  return { ok: engine.setSemanticThreshold(Number(id), semanticThreshold(threshold)) };
 });
 
 // ---- Keywords / exclude words (files auto-reloaded by the running engine) ----
