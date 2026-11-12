@@ -1,6 +1,30 @@
 import type { Logger } from "../utils/logger";
 import { errMsg } from "../utils/misc";
 
+/**
+ * @huggingface/transformers (both its ESM and CommonJS Node builds) calls
+ * require("sharp") at module-load time, even though the image stack is never
+ * touched by our text-only reranker. sharp is a heavy native image library that
+ * is deliberately excluded from the installer, so stub it in the worker process
+ * so that require does not throw ERR_MODULE_NOT_FOUND.
+ */
+let sharpStubbed = false;
+function stubSharp(): void {
+  if (sharpStubbed) return;
+  sharpStubbed = true;
+  const NodeModule = require("node:module") as {
+    _load: (request: string, parent: unknown, isMain: boolean) => unknown;
+  };
+  const originalLoad = NodeModule._load;
+  const stub = (): never => {
+    throw new Error("sharp is not bundled with Keypulse (text-only models only).");
+  };
+  NodeModule._load = function (request: string, parent: unknown, isMain: boolean): unknown {
+    if (request === "sharp") return stub;
+    return originalLoad(request, parent, isMain);
+  } as typeof originalLoad;
+}
+
 export type SemanticModelStatus = "unloaded" | "loading" | "ready" | "error";
 
 /**
@@ -120,6 +144,7 @@ export class RerankerCore {
     this.state = "loading";
     this.lastError = null;
     try {
+      stubSharp();
       // @huggingface/transformers ships a Node CommonJS build (its "require"
       // export condition), so a plain require works in dev and inside the
       // packaged app. The previous `new Function(...import())` trick could not
